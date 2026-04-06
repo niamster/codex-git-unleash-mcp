@@ -58,6 +58,7 @@ src/
     gitStatus.ts
     gitAdd.ts
     gitCommit.ts
+    gitFetch.ts
     gitPush.ts
     gitBranchCreateAndSwitch.ts
     gitBranchSwitch.ts
@@ -622,6 +623,7 @@ Implement in phases to reduce risk.
 - `git_status`
 - `git_add`
 - `git_commit`
+- `git_fetch`
 - `git_push`
 - `git_branch_create_and_switch`
 - `git_branch_switch`
@@ -637,18 +639,16 @@ The core constrained Git/GitHub workflow is now implemented end-to-end.
   Today most `gh` failures surface through the generic command-execution path. A follow-up could detect common authentication and authorization cases and return more specific policy-oriented errors.
 - docs and describe polish
   The server descriptions and top-level docs now match the current tool surface, but could be improved further with clearer workflow examples and richer server-level guidance.
-- optional constrained `git_fetch` support if upstream refresh through MCP proves useful
-  If fetching remote-tracking refs keeps showing up as a workflow gap, add a constrained fetch helper fixed to the configured remote and plain branch names only.
 
 ### Suggested Workflow
 
 For this repository and in general, the intended end-to-end workflow is:
 
 1. create and switch to a new branch from the detected upstream base
-3. do planning and coding work
-4. commit through the constrained commit tool
-5. push the current branch through the constrained push tool
-6. create a draft PR through the constrained GitHub tool
+2. do planning and coding work
+3. commit through the constrained commit tool
+4. push the current branch through the constrained push tool
+5. create a draft PR through the constrained GitHub tool
 
 ## Deferred Work
 
