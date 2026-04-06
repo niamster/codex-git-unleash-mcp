@@ -637,12 +637,12 @@ The core constrained Git/GitHub workflow is now implemented end-to-end.
   The current server returns JSON serialized into MCP text content. A useful follow-up would be returning cleaner structured fields for status, branch operations, and PR creation results so clients do not need to parse text payloads.
 - better GitHub/authentication failure mapping
   Today most `gh` failures surface through the generic command-execution path. A follow-up could detect common authentication and authorization cases and return more specific policy-oriented errors.
-- docs and describe polish
-  The server descriptions and top-level docs now match the current tool surface, but could be improved further with clearer workflow examples and richer server-level guidance.
+- richer server-level guidance
+  The tool descriptions and top-level docs now cover the implemented workflow and constraints, but the server could still expose a stronger top-level description of the trust boundary and authorized repository scope if MCP clients start surfacing that metadata more prominently.
 
-### Suggested Workflow
+### Required Workflow
 
-See [AGENTS.md](AGENTS.md) for the suggested workflow.
+See [AGENTS.md](AGENTS.md) for the required workflow.
 
 ## Deferred Work
 
