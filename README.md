@@ -7,6 +7,7 @@ Current tool surface:
 - `git_status`
 - `git_add`
 - `git_commit`
+- `git_push`
 
 Not implemented yet:
 
@@ -114,12 +115,15 @@ Once registered, Codex should be able to use:
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository
 - `git_commit` with a normal commit message on an allowed branch
+- `git_push` to push the current branch to the configured default remote
 
 Current behavior:
 
 - `git_add` rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` rejects empty commit messages
 - `git_commit` rejects empty commits
+- `git_push` only pushes `HEAD` to `refs/heads/<current-branch>` on the configured default remote
+- `git_push` does not allow arbitrary refspecs or force-like behavior
 - mutating tools reject detached HEAD
 
 ## Example Config For This Repo
@@ -146,6 +150,5 @@ repositories:
 ## Current Limitations
 
 - output is returned as JSON text content rather than richer structured MCP content
-- there is no `git_push` support yet
 - there is no GitHub PR support yet
 - the current setup assumes local `git` is available
