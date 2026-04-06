@@ -36,6 +36,7 @@ The initial tool surface should be fixed and explicit.
 - `git_add`
 - `git_commit`
 - `git_push`
+- `git_branch_create`
 
 ### GitHub tools
 
@@ -73,6 +74,7 @@ At minimum, mutating operations include:
 - `git_add`
 - `git_commit`
 - `git_push`
+- `git_branch_create`
 - `gh_pr_create_draft`
 
 Read-only operations such as `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
@@ -105,6 +107,7 @@ The server must reject any attempt to perform operations outside the fixed tool 
 - delete push
 - push with arbitrary refspecs
 - changing remotes
+- branch creation from arbitrary refs
 - `git config` writes
 - operations against repositories not in the allowlist
 - operations on branches that do not match the configured full-match branch patterns
@@ -167,6 +170,21 @@ Requirements:
 - no arbitrary refspec push
 - no pushing unrelated branches
 
+### `git_branch_create`
+
+Purpose:
+
+- create a new local branch from the latest configured upstream base branch
+
+Requirements:
+
+- repository must be allowlisted
+- current branch must match an allowed full-match pattern
+- the tool must fetch the configured base branch from the configured remote before creating the branch
+- the new branch name must be provided as structured input
+- the tool must create a branch ref only and must not switch the working tree
+- the tool must not accept arbitrary source refs or checkout-like behavior
+
 ### `gh_pr_create_draft`
 
 Purpose:
@@ -209,6 +227,12 @@ Optional configuration that may be useful:
 - default base branch for PRs
 - whether draft PR creation is enabled
 
+The initial branch-creation behavior should prefer configured defaults over inference:
+
+- use `default_remote` to decide which remote to fetch from
+- use `default_pr_base` to decide which upstream branch to branch from when creating a fresh PR branch
+- only fall back to remote-default-branch detection when no configured base exists
+
 Example shape:
 
 ```yaml
@@ -245,6 +269,7 @@ Examples:
 - path escapes repository
 - unsupported operation
 - force-like or amend-like behavior requested
+- branch creation from arbitrary refs is not supported
 - GitHub authentication missing
 - push rejected by remote
 

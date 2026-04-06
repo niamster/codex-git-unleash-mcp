@@ -11,7 +11,6 @@ Current tool surface:
 
 Not implemented yet:
 
-- `git_push`
 - `gh_pr_create_draft`
 
 ## Prerequisites
@@ -48,7 +47,7 @@ Notes:
 
 - `path` must be an absolute path or start with `~/`
 - branch patterns are full-match regexes against the current branch name
-- `git_add` and `git_commit` require the current branch to match one of the configured patterns
+- `git_add`, `git_commit`, and `git_push` require the current branch to match one of the configured patterns
 - `git_status` only requires the repository to be allowlisted
 
 ## Run Locally

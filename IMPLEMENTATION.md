@@ -59,6 +59,7 @@ src/
     gitAdd.ts
     gitCommit.ts
     gitPush.ts
+    gitBranchCreate.ts
     ghPrCreateDraft.ts
   types/
     config.ts
@@ -234,6 +235,8 @@ Examples:
 - `gitAddArgs(paths)`
 - `gitCommitArgs(message)`
 - `gitPushArgs(remote, branch)`
+- `gitFetchBranchArgs(remote, branch)`
+- `gitCreateBranchArgs(newBranch, startPoint)`
 
 The tool handlers should not assemble ad hoc command arrays inline. This reduces drift and makes argument-level testing easier.
 
@@ -387,6 +390,43 @@ Implementation recommendation:
 
 Push the current branch to the same-named remote branch only. Keep this simple in v1.
 
+### `git_branch_create`
+
+Suggested input:
+
+```ts
+type GitBranchCreateInput = {
+  repo_path: string;
+  new_branch: string;
+};
+```
+
+Validation:
+
+- repository must be allowlisted
+- current branch must be authorized
+- `new_branch` must be non-empty after trimming
+- `new_branch` must not already exist
+- `default_remote` must identify the remote to fetch
+- use `default_pr_base` as the preferred upstream base branch
+- if `default_pr_base` is absent, remote-default-branch detection may be used as a fallback
+
+Execution:
+
+- fetch the upstream base branch from the configured remote
+- create a new local branch from `refs/remotes/<remote>/<base>`
+- do not switch HEAD or update the working tree checkout
+
+Suggested output:
+
+```ts
+type GitBranchCreateOutput = {
+  branch: string;
+  remote: string;
+  base: string;
+};
+```
+
 ### `gh_pr_create_draft`
 
 Suggested input:
@@ -503,6 +543,8 @@ Cover:
 - `git_add` path escaping denied
 - successful add and commit
 - empty commit denied
+- successful branch creation from fetched upstream base
+- duplicate branch creation denied
 
 ### Integration tests for GitHub-facing behavior
 
@@ -543,6 +585,12 @@ Implement in phases to reduce risk.
 
 ### Phase 4
 
+- `git_branch_create`
+- fetch/base-branch policy enforcement
+- docs updates for PR setup flow
+
+### Phase 5
+
 - `gh_pr_create_draft`
 - `gh` integration
 - describe polish
@@ -557,7 +605,7 @@ Out of scope for the first implementation:
 - arbitrary GitHub read helpers
 - support for multiple remotes per operation
 - advanced Git pathspec support
-- branch creation or switching
+- branch switching
 - configurable commit policy hooks
 - server-managed credential handling
 

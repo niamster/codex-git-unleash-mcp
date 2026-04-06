@@ -6,73 +6,54 @@
 
 ## Recent Commits
 
+- `1b99fba` `impacted system: git-mcp refresh docs and implementation state`
+- `b4b143a` `impacted system: git-mcp add git push tool`
 - `6ef21de` `impacted system: git-mcp document setup and MCP launcher`
-- `3850bab` `impacted system: git-mcp add MCP launcher for SSH signing`
-- `3b2fe2c` `impacted system: git-mcp expand home paths in config`
 
 ## Current Working Tree
 
 Uncommitted changes:
 
 - modified: [IMPL-STATE.md](/Users/dm/projects/codex-git-unleash-mcp/IMPL-STATE.md)
-- modified: [src/exec/git.ts](/Users/dm/projects/codex-git-unleash-mcp/src/exec/git.ts)
-- modified: [src/server.ts](/Users/dm/projects/codex-git-unleash-mcp/src/server.ts)
-- added: [src/tools/gitPush.ts](/Users/dm/projects/codex-git-unleash-mcp/src/tools/gitPush.ts)
-- modified: [tests/gitArgs.test.ts](/Users/dm/projects/codex-git-unleash-mcp/tests/gitArgs.test.ts)
-- added: [tests/gitPush.test.ts](/Users/dm/projects/codex-git-unleash-mcp/tests/gitPush.test.ts)
-- modified: [tests/helpers.ts](/Users/dm/projects/codex-git-unleash-mcp/tests/helpers.ts)
 - modified: [README.md](/Users/dm/projects/codex-git-unleash-mcp/README.md)
+- modified: [SPEC.md](/Users/dm/projects/codex-git-unleash-mcp/SPEC.md)
+- modified: [IMPLEMENTATION.md](/Users/dm/projects/codex-git-unleash-mcp/IMPLEMENTATION.md)
 
 Intended split:
 
-1. commit `git_push` implementation and tests
-2. commit the refreshed docs and implementation state
+1. commit the refreshed docs and implementation checkpoint
+2. push the docs checkpoint
+3. implement a constrained branch-creation tool for PR setup
+4. implement `gh_pr_create_draft`
 
 Suggested commit messages:
 
-- `git-mcp: add git push tool`
-- `git-mcp: refresh docs and implementation state`
+- `git-mcp: refresh docs after git push`
+- `git-mcp: add branch creation tool`
+- `git-mcp: add draft PR tool`
 
 ## What The Uncommitted Changes Do
 
 ### `IMPL-STATE.md`
 
-- refreshes the checkpoint after `git_push` implementation work
-- records the current verification state and tool surface
-- captures the next likely slice after `git_push`
-
-### `src/exec/git.ts`
-
-- adds a constrained `git push` argv builder
-- adds a fixed helper for pushing the current branch to the configured remote
-
-### `src/server.ts`
-
-- registers the new MCP tool `git_push`
-- keeps branch authorization in the same shared flow used by other mutating tools
-
-### `src/tools/gitPush.ts`
-
-- adds the tool-level push handler
-- restricts pushes to the configured default remote and the current branch
-
-### `tests/gitArgs.test.ts`
-
-- adds coverage for the constrained push argv shape
-
-### `tests/gitPush.test.ts`
-
-- covers pushing to a temporary bare remote
-- verifies the push target stays fixed to `HEAD:refs/heads/<branch>`
-
-### `tests/helpers.ts`
-
-- adds a helper for creating temporary bare Git remotes used by push tests
+- refreshes the checkpoint after the `git_push` implementation and docs commits
+- records the successful MCP push test on `main`
+- captures branch creation and draft PR support as the next slices
 
 ### `README.md`
 
-- updates the documented tool surface to include `git_push`
-- documents the current push behavior and limitations
+- removes stale notes now that `git_push` is implemented
+- keeps the setup guide aligned with the current tool surface
+
+### `SPEC.md`
+
+- records branch creation as the next constrained Git operation
+- clarifies that branch creation should use configured defaults rather than arbitrary source refs
+
+### `IMPLEMENTATION.md`
+
+- refreshes the rollout notes after the `git_push` slice
+- sketches the next branch-creation slice as the setup path for draft PR support
 
 ## Verification Status
 
@@ -82,6 +63,7 @@ Latest verified state:
 - `npm test` passed
 - `bash -n scripts/run-mcp.sh` passed
 - test count at that point: 17 files, 35 tests
+- MCP `git_push` succeeded against `origin` on `main`
 
 ## MCP Status
 
@@ -113,9 +95,10 @@ This confirmed that the earlier commit-signing problem was an environment-launch
 
 ## Recommended Next Steps
 
-1. implement `gh_pr_create_draft`
-2. decide whether to expose richer structured MCP output before or after GitHub PR support
-3. keep using the launcher script for sessions that need SSH-signed commits through MCP
+1. add a constrained branch-creation tool that fetches the configured upstream base and creates a branch ref without checkout
+2. implement `gh_pr_create_draft`
+3. decide whether to expose richer structured MCP output before or after GitHub PR support
+4. keep using the launcher script for sessions that need SSH-signed commits through MCP
 
 ## Current Implementation Scope
 
@@ -134,5 +117,6 @@ Implemented:
 
 Not implemented yet:
 
+- constrained branch creation without checkout
 - `gh_pr_create_draft`
 - richer structured MCP output beyond JSON text content
