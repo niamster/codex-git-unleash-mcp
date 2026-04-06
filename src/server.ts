@@ -7,6 +7,7 @@ import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
 import { gitBranchCreate } from "./tools/gitBranchCreate.js";
 import { gitBranchSwitch } from "./tools/gitBranchSwitch.js";
+import { ghPrCreateDraft } from "./tools/ghPrCreateDraft.js";
 import { gitCommit } from "./tools/gitCommit.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitStatus } from "./tools/gitStatus.js";
@@ -139,6 +140,31 @@ export function createServer(config: Config): McpServer {
       const repo = await resolveAllowedRepo(config, repo_path);
       const branch = await requireAllowedBranch(repo);
       const result = await gitPush(repo, branch);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "gh_pr_create_draft",
+    "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, and constrains the base branch to repository policy.",
+    {
+      repo_path: z.string().min(1),
+      title: z.string(),
+      body: z.string(),
+      base: z.string().min(1).optional(),
+    },
+    async ({ repo_path, title, body, base }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      const branch = await requireAllowedBranch(repo);
+      const result = await ghPrCreateDraft(repo, branch, { title, body, base });
 
       return {
         content: [
