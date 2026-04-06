@@ -2,8 +2,7 @@ export type RepoPolicy = {
   path: string;
   canonicalPath: string;
   allowedBranchPatterns: RegExp[];
-  defaultRemote: string;
-  defaultPrBase?: string;
+  defaultRemote?: string;
   allowDraftPrs: boolean;
 };
 

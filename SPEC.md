@@ -36,7 +36,7 @@ The initial tool surface should be fixed and explicit.
 - `git_add`
 - `git_commit`
 - `git_push`
-- `git_branch_create`
+- `git_branch_create_and_switch`
 - `git_branch_switch`
 
 ### GitHub tools
@@ -75,9 +75,11 @@ At minimum, mutating operations include:
 - `git_add`
 - `git_commit`
 - `git_push`
-- `git_branch_create`
-- `git_branch_switch`
 - `gh_pr_create_draft`
+
+Branch-workflow exception:
+
+- `git_branch_create_and_switch` and `git_branch_switch` are mutating but may be allowed without current-branch pattern checks as long as they preserve the clean-worktree and constrained-ref safety rules
 
 Read-only operations such as `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
 
@@ -171,19 +173,22 @@ Requirements:
 - no arbitrary refspec push
 - no pushing unrelated branches
 
-### `git_branch_create`
+### `git_branch_create_and_switch`
 
 Purpose:
 
-- create a new local branch from the latest configured upstream base branch
+- create a new local branch from the inferred upstream base branch and switch to it
 
 Requirements:
 
 - repository must be allowlisted
-- current branch must match an allowed full-match pattern
-- the tool must fetch the configured base branch from the configured remote before creating the branch
+- the worktree must be clean
+- the tool must infer the remote at runtime, preferring the current branch remote, then `origin`, with configuration override allowed
+- the tool may accept an explicit plain branch name as the upstream base branch
+- when no base branch is provided, the tool must infer the base branch from the remote HEAD first, with GitHub default-branch lookup as a fallback
+- the tool must fetch the detected base branch before creating the branch
 - the new branch name must be provided as structured input
-- the tool must create a branch ref only and must not switch the working tree
+- the tool must switch to the new local branch after creating it
 - the tool must not accept arbitrary source refs or checkout-like behavior
 
 ### `git_branch_switch`
@@ -239,14 +244,14 @@ Initial configuration should include, per repository:
 Optional configuration that may be useful:
 
 - default remote name
-- default base branch for PRs
 - whether draft PR creation is enabled
 
-The initial branch-creation behavior should prefer configured defaults over inference:
+The initial branch and PR behavior should prefer runtime inference with a narrow fallback order:
 
-- use `default_remote` to decide which remote to fetch from
-- use `default_pr_base` to decide which upstream branch to branch from when creating a fresh PR branch
-- only fall back to remote-default-branch detection when no configured base exists
+- use `default_remote` only as an override when present
+- otherwise use the current branch remote when available, then `origin`
+- infer the base branch from remote HEAD first
+- fall back to GitHub default-branch detection when remote HEAD is unavailable
 
 Example shape:
 
@@ -256,8 +261,6 @@ repositories:
     allowed_branch_patterns:
       - "^dm/.*$"
       - "^feature/[a-z0-9._-]+$"
-    default_remote: origin
-    default_pr_base: main
     allow_draft_prs: true
 ```
 

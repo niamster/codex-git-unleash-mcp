@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ghPrCreateDraftArgs } from "../src/exec/gh.js";
+import { ghPrCreateDraftArgs, ghRepoViewDefaultBranchArgs } from "../src/exec/gh.js";
 
 describe("gh argument builders", () => {
   it("builds constrained gh draft PR arguments", () => {
@@ -15,5 +15,9 @@ describe("gh argument builders", () => {
       "--body",
       "Body",
     ]);
+  });
+
+  it("builds constrained gh default-branch lookup arguments", () => {
+    expect(ghRepoViewDefaultBranchArgs()).toEqual(["repo", "view", "--json", "defaultBranchRef"]);
   });
 });

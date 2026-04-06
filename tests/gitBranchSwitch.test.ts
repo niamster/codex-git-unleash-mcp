@@ -7,7 +7,7 @@ import { BranchNotFoundError, DirtyWorktreeError, EmptyBranchNameError } from ".
 import { getCurrentBranch, gitSwitchBranchArgs } from "../src/exec/git.js";
 import { runCommand } from "../src/exec/run.js";
 import { gitAdd } from "../src/tools/gitAdd.js";
-import { gitBranchCreate } from "../src/tools/gitBranchCreate.js";
+import { gitBranchCreateAndSwitch } from "../src/tools/gitBranchCreateAndSwitch.js";
 import { gitBranchSwitch } from "../src/tools/gitBranchSwitch.js";
 import { gitCommit } from "../src/tools/gitCommit.js";
 import { gitPush } from "../src/tools/gitPush.js";
@@ -30,7 +30,13 @@ describe("gitBranchSwitch", () => {
     await gitAdd(repo, ["README.md"]);
     await gitCommit(repo, "add readme");
     await gitPush(repo, "main");
-    await gitBranchCreate(repo, "feature/switch-me");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+    await gitBranchCreateAndSwitch(repo, { newBranch: "feature/switch-me" });
+    await gitBranchSwitch(repo, "main");
 
     const result = await gitBranchSwitch(repo, "feature/switch-me");
     const currentBranch = await getCurrentBranch(repoDir);

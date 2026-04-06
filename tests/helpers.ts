@@ -18,8 +18,6 @@ export async function createTempGitRepo(): Promise<{ repoDir: string; repo: Repo
       path: repoDir,
       canonicalPath: await fs.realpath(repoDir),
       allowedBranchPatterns: [/^.*$/],
-      defaultRemote: "origin",
-      defaultPrBase: "main",
       allowDraftPrs: true,
     },
   };

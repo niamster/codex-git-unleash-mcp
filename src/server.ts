@@ -5,7 +5,7 @@ import type { Config } from "./types/config.js";
 import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
-import { gitBranchCreate } from "./tools/gitBranchCreate.js";
+import { gitBranchCreateAndSwitch } from "./tools/gitBranchCreateAndSwitch.js";
 import { gitBranchSwitch } from "./tools/gitBranchSwitch.js";
 import { ghPrCreateDraft } from "./tools/ghPrCreateDraft.js";
 import { gitCommit } from "./tools/gitCommit.js";
@@ -86,16 +86,16 @@ export function createServer(config: Config): McpServer {
   );
 
   server.tool(
-    "git_branch_create",
-    "Create a new local branch from the configured upstream base branch for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, fetches the configured base first, and does not switch the working tree.",
+    "git_branch_create_and_switch",
+    "Create a new local branch from an explicit or detected upstream base branch for an allowlisted repository, then switch to it. This tool requires a clean worktree, infers the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs.",
     {
       repo_path: z.string().min(1),
       new_branch: z.string(),
+      branch: z.string().min(1).optional(),
     },
-    async ({ repo_path, new_branch }) => {
+    async ({ repo_path, new_branch, branch }) => {
       const repo = await resolveAllowedRepo(config, repo_path);
-      await requireAllowedBranch(repo);
-      const result = await gitBranchCreate(repo, new_branch);
+      const result = await gitBranchCreateAndSwitch(repo, { newBranch: new_branch, branch });
 
       return {
         content: [
@@ -132,7 +132,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_push",
-    "Push the current branch to the configured default remote for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and does not allow arbitrary refspecs or force-like behavior.",
+    "Push the current branch to the detected remote for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and does not allow arbitrary refspecs or force-like behavior.",
     {
       repo_path: z.string().min(1),
     },
@@ -154,7 +154,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "gh_pr_create_draft",
-    "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, and constrains the base branch to repository policy.",
+    "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, and uses either an explicit base or a runtime-detected default branch.",
     {
       repo_path: z.string().min(1),
       title: z.string(),

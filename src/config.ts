@@ -12,7 +12,6 @@ const repoPolicySchema = z.object({
   path: z.string().min(1),
   allowed_branch_patterns: z.array(z.string().min(1)),
   default_remote: z.string().min(1).optional(),
-  default_pr_base: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
 });
 
@@ -56,8 +55,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
       path: expandedPath,
       canonicalPath,
       allowedBranchPatterns,
-      defaultRemote: repo.default_remote ?? "origin",
-      defaultPrBase: repo.default_pr_base,
+      defaultRemote: repo.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? true,
     });
 
