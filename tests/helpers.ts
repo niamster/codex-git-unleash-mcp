@@ -23,3 +23,9 @@ export async function createTempGitRepo(): Promise<{ repoDir: string; repo: Repo
     },
   };
 }
+
+export async function createTempBareGitRepo(): Promise<string> {
+  const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-remote-"));
+  await runCommand({ cwd: repoDir, command: "git", argv: ["init", "--bare"] });
+  return repoDir;
+}

@@ -12,6 +12,10 @@ export function gitCommitArgs(message: string): string[] {
   return ["commit", "-m", message];
 }
 
+export function gitPushArgs(remote: string, branch: string): string[] {
+  return ["push", remote, `HEAD:refs/heads/${branch}`];
+}
+
 export async function getGitTopLevel(cwd: string): Promise<string> {
   const result = await runCommand({
     cwd,
@@ -65,6 +69,14 @@ export async function createCommit(cwd: string, message: string): Promise<void> 
     cwd,
     command: "git",
     argv: gitCommitArgs(message),
+  });
+}
+
+export async function pushBranch(cwd: string, remote: string, branch: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitPushArgs(remote, branch),
   });
 }
 
