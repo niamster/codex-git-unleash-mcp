@@ -15,13 +15,13 @@ import { getGitStatus } from "./tools/gitStatus.js";
 
 export function createServer(config: Config): McpServer {
   const server = new McpServer({
-    name: "git-github-approval-mcp",
+    name: "codex-git-unleash-mcp",
     version: "0.1.0",
   });
 
   server.tool(
     "git_status",
-    "Show git status for an allowlisted repository. This tool is read-only and does not require branch authorization.",
+    "Show git status for an allowlisted repository. This tool is read-only, returns the current branch and worktree summary, and does not require branch authorization.",
     {
       repo_path: z.string().min(1),
     },
@@ -42,7 +42,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_add",
-    "Stage a constrained list of repository-relative paths in an allowlisted repository. This tool mutates repository state and requires the current branch to match configured full-match patterns.",
+    "Stage a constrained list of repository-relative paths in an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and rejects absolute or repository-escaping paths.",
     {
       repo_path: z.string().min(1),
       paths: z.array(z.string().min(1)).min(1),
@@ -65,7 +65,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_commit",
-    "Create a normal commit in an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and rejects empty commits.",
+    "Create a normal commit in an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, rejects empty commit messages, and rejects empty commits.",
     {
       repo_path: z.string().min(1),
       message: z.string(),
@@ -88,7 +88,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_branch_create_and_switch",
-    "Create a new local branch from an explicit or detected upstream base branch for an allowlisted repository, then switch to it. This tool requires a clean worktree, infers the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs.",
+    "Create a new local branch from an explicit or detected upstream base branch for an allowlisted repository, then switch to it. This tool requires a clean worktree, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
     {
       repo_path: z.string().min(1),
       new_branch: z.string(),
@@ -133,7 +133,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_fetch",
-    "Fetch a plain branch name from the detected remote for an allowlisted repository. This tool refreshes remote-tracking refs, defaults to 'main' when no branch is provided, and does not allow arbitrary fetch arguments.",
+    "Fetch a plain branch name from the detected remote for an allowlisted repository. This tool refreshes remote-tracking refs, defaults to 'main' when no branch is provided, and does not allow arbitrary fetch arguments or refspecs.",
     {
       repo_path: z.string().min(1),
       branch: z.string().optional(),
@@ -155,7 +155,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_push",
-    "Push the current branch to the detected remote for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and does not allow arbitrary refspecs or force-like behavior.",
+    "Push the current branch to the detected remote for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and does not allow arbitrary refspecs, force-like behavior, or pushing unrelated branches.",
     {
       repo_path: z.string().min(1),
     },
@@ -177,7 +177,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "gh_pr_create_draft",
-    "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, and uses either an explicit base or a runtime-detected default branch.",
+    "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, requires a non-empty title, and uses either an explicit base or a runtime-detected default branch.",
     {
       repo_path: z.string().min(1),
       title: z.string(),

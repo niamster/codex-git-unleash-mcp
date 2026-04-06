@@ -1,6 +1,8 @@
 # codex-git-unleash-mcp
 
-Local MCP server for a narrow set of Git operations that Codex can call without repeated shell approval prompts.
+Local MCP server for a narrow, policy-constrained set of Git and GitHub operations that Codex can call without repeated shell approval prompts.
+
+It exists to handle a small approved workflow through MCP tools instead of ad hoc shell access: inspect repository state, stage and commit changes, fetch and push the current branch, create or switch local branches in a constrained way, and open draft pull requests.
 
 Current tool surface:
 
@@ -12,6 +14,8 @@ Current tool surface:
 - `git_branch_create_and_switch`
 - `git_branch_switch`
 - `gh_pr_create_draft`
+
+The server is intentionally not a generic `git` or `gh` proxy. Inputs are structured, commands are fixed, and unsupported operations are denied by default.
 
 ## Prerequisites
 
@@ -49,9 +53,22 @@ Notes:
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted and fetches from the resolved remote
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree but do not require the current branch to match `allowed_branch_patterns`
-- branch creation and PR base detection use runtime inference rather than `default_pr_base`
-- remote selection defaults to the current branch's remote when available, then `origin`, unless `default_remote` is explicitly configured
+- remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
+- branch creation and PR base resolution prefer the remote HEAD branch and fall back to GitHub default-branch detection when needed
 - `git_status` only requires the repository to be allowlisted
+
+## Workflow Summary
+
+The intended happy path is:
+
+1. Call `git_status` to inspect the allowlisted repository.
+2. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch.
+3. Call `git_add` with explicit repository-relative paths.
+4. Call `git_commit` with a normal commit message.
+5. Call `git_push` to push the current branch to the resolved remote.
+6. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
+
+Each step stays inside a fixed policy boundary. There is no arbitrary checkout, no arbitrary push refspec, no amend flow, and no non-draft PR creation.
 
 ## Run Locally
 
@@ -128,13 +145,23 @@ Current behavior:
 - `git_add` rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` rejects empty commit messages
 - `git_commit` rejects empty commits
-- `git_branch_create_and_switch` detects the remote at runtime, uses the explicit base branch when provided or detects one otherwise, fetches that base, creates the local branch, and switches to it
+- `git_branch_create_and_switch` resolves the remote at runtime, uses the explicit base branch when provided or detects one otherwise, fetches that base, creates the local branch, and switches to it
 - `git_branch_switch` only switches to an explicit existing local branch and rejects dirty worktrees
 - `git_fetch` only fetches `git fetch <resolved-remote> <branch>` and defaults the branch to `main`
 - `git_push` only pushes `HEAD` to `refs/heads/<current-branch>` on the resolved remote
 - `git_push` does not allow arbitrary refspecs or force-like behavior
-- `gh_pr_create_draft` is draft-only and uses either the explicit `base` input or the detected default branch
+- `gh_pr_create_draft` is draft-only, requires a non-empty title, and uses either the explicit `base` input or the detected default branch
 - mutating tools reject detached HEAD
+
+## Remote And Base Resolution
+
+Some operations resolve defaults at runtime instead of requiring everything to be pinned in config.
+
+- `git_fetch`, `git_push`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
+- `git_branch_create_and_switch` and `gh_pr_create_draft` resolve the base branch by preferring the remote HEAD branch and falling back to the GitHub repository default branch
+- `git_fetch` keeps a narrower default and uses `main` when no branch is provided
+
+This keeps the tools constrained while still working across repositories that use different default branches or remotes.
 
 ## Example Config For This Repo
 
@@ -162,3 +189,4 @@ repositories:
 
 - output is returned as JSON text content rather than richer structured MCP content
 - the current setup assumes local `git` is available
+- `gh_pr_create_draft` depends on a working `gh` CLI login for the target repository
