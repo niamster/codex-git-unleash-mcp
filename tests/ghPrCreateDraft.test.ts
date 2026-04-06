@@ -42,6 +42,7 @@ describe("ghPrCreateDraft", () => {
 
     expect(createDraftPullRequest).toHaveBeenCalledWith("/tmp/repo", {
       base: "main",
+      fill: false,
       title: "Add draft PR tool",
       body: "Implements gh_pr_create_draft",
     });
@@ -71,8 +72,42 @@ describe("ghPrCreateDraft", () => {
     expect(result.base).toBe("main");
     expect(createDraftPullRequest).toHaveBeenCalledWith("/tmp/repo", {
       base: "main",
+      fill: false,
       title: "Add draft PR tool",
       body: "",
+    });
+  });
+
+  it("allows fill mode without an explicit title", async () => {
+    createDraftPullRequest.mockResolvedValue("https://github.com/example/repo/pull/125");
+
+    const result = await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      fill: true,
+    });
+
+    expect(createDraftPullRequest).toHaveBeenCalledWith("/tmp/repo", {
+      base: "main",
+      fill: true,
+      title: undefined,
+      body: undefined,
+    });
+    expect(result.url).toBe("https://github.com/example/repo/pull/125");
+  });
+
+  it("allows fill mode with title and body overrides", async () => {
+    createDraftPullRequest.mockResolvedValue("https://github.com/example/repo/pull/126");
+
+    await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      fill: true,
+      title: "Override title",
+      body: "Override body",
+    });
+
+    expect(createDraftPullRequest).toHaveBeenCalledWith("/tmp/repo", {
+      base: "main",
+      fill: true,
+      title: "Override title",
+      body: "Override body",
     });
   });
 

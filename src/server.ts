@@ -157,14 +157,15 @@ export function createServer(config: Config): McpServer {
     "Create a draft pull request for the current branch in an allowlisted repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, and constrains the base branch to repository policy.",
     {
       repo_path: z.string().min(1),
-      title: z.string(),
-      body: z.string(),
+      title: z.string().optional(),
+      body: z.string().optional(),
       base: z.string().min(1).optional(),
+      fill: z.boolean().optional(),
     },
-    async ({ repo_path, title, body, base }) => {
+    async ({ repo_path, title, body, base, fill }) => {
       const repo = await resolveAllowedRepo(config, repo_path);
       const branch = await requireAllowedBranch(repo);
-      const result = await ghPrCreateDraft(repo, branch, { title, body, base });
+      const result = await ghPrCreateDraft(repo, branch, { title, body, base, fill });
 
       return {
         content: [
