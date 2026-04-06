@@ -5,8 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { getGitStatus } from "../src/tools/gitStatus.js";
-import type { RepoPolicy } from "../src/types/config.js";
-import { runCommand } from "../src/exec/run.js";
+import { createTempGitRepo } from "./helpers.js";
 
 const tempPaths: string[] = [];
 
@@ -16,19 +15,9 @@ afterEach(async () => {
 
 describe("getGitStatus", () => {
   it("returns branch and cleanliness for an initialized repository", async () => {
-    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-repo-"));
+    const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
-
-    await runCommand({ cwd: repoDir, command: "git", argv: ["init"] });
     await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
-
-    const repo: RepoPolicy = {
-      path: repoDir,
-      canonicalPath: repoDir,
-      allowedBranchPatterns: [/^.*/],
-      defaultRemote: "origin",
-      allowDraftPrs: true,
-    };
 
     const status = await getGitStatus(repo);
 

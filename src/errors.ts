@@ -26,6 +26,27 @@ export class DetachedHeadError extends Error {
   }
 }
 
+export class PathValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PathValidationError";
+  }
+}
+
+export class EmptyCommitMessageError extends Error {
+  constructor() {
+    super("commit message must be non-empty");
+    this.name = "EmptyCommitMessageError";
+  }
+}
+
+export class EmptyCommitError extends Error {
+  constructor(repoPath: string) {
+    super(`repository '${repoPath}' has no staged changes to commit`);
+    this.name = "EmptyCommitError";
+  }
+}
+
 export class CommandExecutionError extends Error {
   public readonly command: string;
   public readonly args: string[];
