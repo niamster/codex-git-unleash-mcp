@@ -29,7 +29,7 @@ describe("loadConfig", () => {
 
     expect(config.repositories).toHaveLength(1);
     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
-    expect(config.repositories[0]?.defaultRemote).toBe("origin");
+    expect(config.repositories[0]?.defaultRemote).toBeUndefined();
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
   });
 

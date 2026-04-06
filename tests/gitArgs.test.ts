@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   gitAddArgs,
+  gitBranchRemoteArgs,
   gitCommitArgs,
   gitCreateBranchArgs,
   gitFetchBranchArgs,
   gitPushArgs,
+  gitRemoteGetUrlArgs,
+  gitRemoteHeadArgs,
   gitSwitchBranchArgs,
 } from "../src/exec/git.js";
 
@@ -41,5 +44,11 @@ describe("git argument builders", () => {
 
   it("builds constrained git branch switch arguments", () => {
     expect(gitSwitchBranchArgs("feature/test-pr")).toEqual(["checkout", "feature/test-pr"]);
+  });
+
+  it("builds constrained git remote resolution arguments", () => {
+    expect(gitRemoteGetUrlArgs("origin")).toEqual(["remote", "get-url", "origin"]);
+    expect(gitBranchRemoteArgs("feature/test-pr")).toEqual(["config", "--get", "branch.feature/test-pr.remote"]);
+    expect(gitRemoteHeadArgs("origin")).toEqual(["ls-remote", "--symref", "origin", "HEAD"]);
   });
 });

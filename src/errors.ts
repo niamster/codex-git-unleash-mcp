@@ -61,10 +61,17 @@ export class BranchAlreadyExistsError extends Error {
   }
 }
 
-export class MissingDefaultBaseBranchError extends Error {
+export class RemoteResolutionError extends Error {
   constructor(repoPath: string) {
-    super(`repository '${repoPath}' does not define a default PR base branch`);
-    this.name = "MissingDefaultBaseBranchError";
+    super(`could not determine a remote for repository '${repoPath}'`);
+    this.name = "RemoteResolutionError";
+  }
+}
+
+export class BaseBranchResolutionError extends Error {
+  constructor(repoPath: string, remote: string) {
+    super(`could not determine a base branch for repository '${repoPath}' and remote '${remote}'`);
+    this.name = "BaseBranchResolutionError";
   }
 }
 
@@ -93,13 +100,6 @@ export class EmptyPullRequestTitleError extends Error {
   constructor() {
     super("pull request title must be non-empty");
     this.name = "EmptyPullRequestTitleError";
-  }
-}
-
-export class PullRequestBaseBranchError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PullRequestBaseBranchError";
   }
 }
 

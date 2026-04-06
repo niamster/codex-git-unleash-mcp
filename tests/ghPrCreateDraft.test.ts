@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  BaseBranchResolutionError,
   DraftPrsDisabledError,
   EmptyPullRequestTitleError,
-  PullRequestBaseBranchError,
   PullRequestUrlParseError,
 } from "../src/errors.js";
 import type { RepoPolicy } from "../src/types/config.js";
@@ -12,28 +12,38 @@ import { ghPrCreateDraft } from "../src/tools/ghPrCreateDraft.js";
 const { createDraftPullRequest } = vi.hoisted(() => ({
   createDraftPullRequest: vi.fn(),
 }));
+const { resolveRepoBaseBranch, resolveRepoRemote } = vi.hoisted(() => ({
+  resolveRepoRemote: vi.fn(),
+  resolveRepoBaseBranch: vi.fn(),
+}));
 
 vi.mock("../src/exec/gh.js", () => ({
   createDraftPullRequest,
   ghPrCreateDraftArgs: vi.fn(),
+}));
+vi.mock("../src/tools/runtimeDefaults.js", () => ({
+  resolveRepoRemote,
+  resolveRepoBaseBranch,
 }));
 
 const repo: RepoPolicy = {
   path: "/tmp/repo",
   canonicalPath: "/tmp/repo",
   allowedBranchPatterns: [/^dm\/.*$/],
-  defaultRemote: "origin",
-  defaultPrBase: "main",
   allowDraftPrs: true,
 };
 
 afterEach(() => {
   createDraftPullRequest.mockReset();
+  resolveRepoRemote.mockReset();
+  resolveRepoBaseBranch.mockReset();
 });
 
 describe("ghPrCreateDraft", () => {
-  it("creates a draft PR using the configured default base", async () => {
+  it("creates a draft PR using the detected base by default", async () => {
     createDraftPullRequest.mockResolvedValue("https://github.com/example/repo/pull/123");
+    resolveRepoRemote.mockResolvedValue("origin");
+    resolveRepoBaseBranch.mockResolvedValue("main");
 
     const result = await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
       title: "Add draft PR tool",
@@ -52,23 +62,18 @@ describe("ghPrCreateDraft", () => {
     });
   });
 
-  it("allows an explicit base when no configured default exists", async () => {
+  it("allows an explicit base without runtime base detection", async () => {
     createDraftPullRequest.mockResolvedValue("https://github.com/example/repo/pull/124");
+    resolveRepoRemote.mockResolvedValue("origin");
 
-    const result = await ghPrCreateDraft(
-      {
-        ...repo,
-        defaultPrBase: undefined,
-      },
-      "dm/gh-pr-create-draft-v2",
-      {
-        title: "Add draft PR tool",
-        body: "",
-        base: "main",
-      },
-    );
+    const result = await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      title: "Add draft PR tool",
+      body: "",
+      base: "main",
+    });
 
     expect(result.base).toBe("main");
+    expect(resolveRepoBaseBranch).not.toHaveBeenCalled();
     expect(createDraftPullRequest).toHaveBeenCalledWith("/tmp/repo", {
       base: "main",
       title: "Add draft PR tool",
@@ -98,34 +103,22 @@ describe("ghPrCreateDraft", () => {
     ).rejects.toBeInstanceOf(EmptyPullRequestTitleError);
   });
 
-  it("rejects explicit bases that conflict with configuration", async () => {
+  it("surfaces runtime base-detection failures", async () => {
+    resolveRepoRemote.mockResolvedValue("origin");
+    resolveRepoBaseBranch.mockRejectedValue(new BaseBranchResolutionError("/tmp/repo", "origin"));
+
     await expect(
       ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
         title: "Add draft PR tool",
         body: "",
-        base: "release",
       }),
-    ).rejects.toBeInstanceOf(PullRequestBaseBranchError);
-  });
-
-  it("rejects omitted bases when no configured default exists", async () => {
-    await expect(
-      ghPrCreateDraft(
-        {
-          ...repo,
-          defaultPrBase: undefined,
-        },
-        "dm/gh-pr-create-draft-v2",
-        {
-          title: "Add draft PR tool",
-          body: "",
-        },
-      ),
-    ).rejects.toBeInstanceOf(PullRequestBaseBranchError);
+    ).rejects.toBeInstanceOf(BaseBranchResolutionError);
   });
 
   it("rejects gh output that is not a PR URL", async () => {
     createDraftPullRequest.mockResolvedValue("created pull request");
+    resolveRepoRemote.mockResolvedValue("origin");
+    resolveRepoBaseBranch.mockResolvedValue("main");
 
     await expect(
       ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {

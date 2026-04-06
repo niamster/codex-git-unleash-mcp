@@ -25,7 +25,6 @@ describe("resolveAllowedRepo", () => {
           path: "/tmp/other",
           canonicalPath: "/tmp/other",
           allowedBranchPatterns: [/^feature\/.+$/],
-          defaultRemote: "origin",
           allowDraftPrs: true,
         },
       ],

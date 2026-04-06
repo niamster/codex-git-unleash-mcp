@@ -28,6 +28,18 @@ export function gitSwitchBranchArgs(branch: string): string[] {
   return ["checkout", branch];
 }
 
+export function gitRemoteGetUrlArgs(remote: string): string[] {
+  return ["remote", "get-url", remote];
+}
+
+export function gitBranchRemoteArgs(branch: string): string[] {
+  return ["config", "--get", `branch.${branch}.remote`];
+}
+
+export function gitRemoteHeadArgs(remote: string): string[] {
+  return ["ls-remote", "--symref", remote, "HEAD"];
+}
+
 export async function getGitTopLevel(cwd: string): Promise<string> {
   const result = await runCommand({
     cwd,
@@ -127,6 +139,55 @@ export async function switchBranch(cwd: string, branch: string): Promise<void> {
     command: "git",
     argv: gitSwitchBranchArgs(branch),
   });
+}
+
+export async function remoteExists(cwd: string, remote: string): Promise<boolean> {
+  try {
+    await runCommand({
+      cwd,
+      command: "git",
+      argv: gitRemoteGetUrlArgs(remote),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getBranchRemote(cwd: string, branch: string): Promise<string | null> {
+  try {
+    const result = await runCommand({
+      cwd,
+      command: "git",
+      argv: gitBranchRemoteArgs(branch),
+    });
+    const remote = result.stdout.trim();
+    return remote || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getRemoteHeadBranch(cwd: string, remote: string): Promise<string | null> {
+  try {
+    const result = await runCommand({
+      cwd,
+      command: "git",
+      argv: gitRemoteHeadArgs(remote),
+    });
+    const headLine = result.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.startsWith("ref: "));
+    if (!headLine) {
+      return null;
+    }
+
+    const match = /^ref:\s+refs\/heads\/(.+)\s+HEAD$/.exec(headLine);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getHeadCommit(cwd: string): Promise<{ oid: string; summary: string }> {

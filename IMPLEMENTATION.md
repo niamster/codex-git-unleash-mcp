@@ -59,7 +59,7 @@ src/
     gitAdd.ts
     gitCommit.ts
     gitPush.ts
-    gitBranchCreate.ts
+    gitBranchCreateAndSwitch.ts
     gitBranchSwitch.ts
     ghPrCreateDraft.ts
   types/
@@ -106,7 +106,6 @@ repositories:
       - "^dm/.*$"
       - "^feature/[a-z0-9._-]+$"
     default_remote: origin
-    default_pr_base: main
     allow_draft_prs: true
 ```
 
@@ -117,7 +116,6 @@ type RepoPolicy = {
   path: string;
   allowed_branch_patterns: string[];
   default_remote?: string;
-  default_pr_base?: string;
   allow_draft_prs?: boolean;
 };
 
@@ -132,7 +130,6 @@ Validation rules:
 - configured repository paths must resolve to canonical real paths
 - duplicate canonical repository paths are rejected
 - each regex must compile successfully
-- `default_remote` defaults to `origin`
 - `allow_draft_prs` defaults to `true`
 
 ## Authorization Flow
@@ -143,7 +140,7 @@ Each tool should follow the same top-level policy order:
 2. Resolve the requested repository path.
 3. Canonicalize the repository path and match it to a configured repository.
 4. Verify the repository looks like a Git repository.
-5. If the tool is mutating, read the current branch and validate it against full-match branch regexes.
+5. If the tool mutates content history or remote state, read the current branch and validate it against full-match branch regexes.
 6. Run tool-specific validation.
 7. Execute the fixed command or API call.
 8. Return structured output or structured failure.
@@ -165,7 +162,7 @@ This prevents path aliasing and symlink escapes from widening access.
 
 ## Branch Authorization
 
-Branch authorization applies only to mutating tools in the initial version.
+Branch authorization applies to content-mutating tools in the initial version.
 
 Implementation requirements:
 
@@ -392,37 +389,38 @@ Implementation recommendation:
 
 Push the current branch to the same-named remote branch only. Keep this simple in v1.
 
-### `git_branch_create`
+### `git_branch_create_and_switch`
 
 Suggested input:
 
 ```ts
-type GitBranchCreateInput = {
+type GitBranchCreateAndSwitchInput = {
   repo_path: string;
   new_branch: string;
+  branch?: string;
 };
 ```
 
 Validation:
 
 - repository must be allowlisted
-- current branch must be authorized
+- worktree must be clean
 - `new_branch` must be non-empty after trimming
 - `new_branch` must not already exist
-- `default_remote` must identify the remote to fetch
-- use `default_pr_base` as the preferred upstream base branch
-- if `default_pr_base` is absent, remote-default-branch detection may be used as a fallback
+- resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
+- if `branch` is provided, treat it as the upstream base branch name
+- otherwise resolve the base branch from remote HEAD first, with GitHub default-branch lookup as a fallback
 
 Execution:
 
-- fetch the upstream base branch from the configured remote
+- fetch the upstream base branch from the detected remote
 - create a new local branch from `refs/remotes/<remote>/<base>`
-- do not switch HEAD or update the working tree checkout
+- switch to the new branch after creating it
 
 Suggested output:
 
 ```ts
-type GitBranchCreateOutput = {
+type GitBranchCreateAndSwitchOutput = {
   branch: string;
   remote: string;
   base: string;
@@ -480,12 +478,12 @@ Validation:
 - draft PRs must be enabled for the repository
 - title must be non-empty after trimming
 - body may be empty if `gh` supports that cleanly in the chosen invocation shape
-- base must be omitted or match configured policy
+- base may be provided explicitly, otherwise infer it at runtime from remote HEAD with GitHub default-branch fallback
 
 Execution:
 
 - create a draft PR for the current branch using `gh`
-- use configured default base when `base` is omitted
+- use the explicit `base` input when provided, otherwise use the inferred default base
 
 Suggested output:
 
@@ -576,7 +574,7 @@ Cover:
 - `git_add` path escaping denied
 - successful add and commit
 - empty commit denied
-- successful branch creation from fetched upstream base
+- successful branch creation and switch from fetched upstream base
 - duplicate branch creation denied
 - clean-worktree branch switch succeeds
 - dirty-worktree branch switch is denied
@@ -588,8 +586,8 @@ Prefer mocking `gh` invocation in most tests.
 Cover:
 
 - draft PR command shape
-- base branch defaulting
-- unsupported remote override denied
+- base branch inference
+- remote inference
 - authentication failure mapping
 
 Live GitHub integration tests can be deferred until later.
@@ -625,7 +623,7 @@ Implement in phases to reduce risk.
 - `git_add`
 - `git_commit`
 - `git_push`
-- `git_branch_create`
+- `git_branch_create_and_switch`
 - `git_branch_switch`
 - `gh_pr_create_draft`
 
@@ -637,10 +635,6 @@ The core constrained Git/GitHub workflow is now implemented end-to-end.
   The current server returns JSON serialized into MCP text content. A useful follow-up would be returning cleaner structured fields for status, branch operations, and PR creation results so clients do not need to parse text payloads.
 - better GitHub/authentication failure mapping
   Today most `gh` failures surface through the generic command-execution path. A follow-up could detect common authentication and authorization cases and return more specific policy-oriented errors.
-- branch workflow ergonomics
-  The current design keeps `git_branch_create` and `git_branch_switch` as separate constrained primitives. A follow-up could either:
-  - allow `git_branch_create` to accept an optional base branch name while still defaulting to `default_pr_base`
-  - add a higher-level convenience tool that creates and switches in one step while preserving the clean-worktree safety checks
 - docs and describe polish
   The server descriptions and top-level docs now match the current tool surface, but could be improved further with clearer workflow examples and richer server-level guidance.
 - optional constrained `git_fetch` support if upstream refresh through MCP proves useful
@@ -650,8 +644,7 @@ The core constrained Git/GitHub workflow is now implemented end-to-end.
 
 For this repository and in general, the intended end-to-end workflow is:
 
-1. create a new branch from the configured upstream base
-2. switch to that branch
+1. create and switch to a new branch from the detected upstream base
 3. do planning and coding work
 4. commit through the constrained commit tool
 5. push the current branch through the constrained push tool

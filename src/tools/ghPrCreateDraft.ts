@@ -1,11 +1,7 @@
-import {
-  DraftPrsDisabledError,
-  EmptyPullRequestTitleError,
-  PullRequestBaseBranchError,
-  PullRequestUrlParseError,
-} from "../errors.js";
+import { DraftPrsDisabledError, EmptyPullRequestTitleError, PullRequestUrlParseError } from "../errors.js";
 import { createDraftPullRequest } from "../exec/gh.js";
 import type { RepoPolicy } from "../types/config.js";
+import { resolveRepoBaseBranch, resolveRepoRemote } from "./runtimeDefaults.js";
 
 export type GhPrCreateDraftResult = {
   url: string;
@@ -28,8 +24,7 @@ export async function ghPrCreateDraft(
   }
 
   const requestedBase = input.base?.trim();
-  const configuredBase = repo.defaultPrBase;
-  const base = resolveBaseBranch(repo.canonicalPath, configuredBase, requestedBase);
+  const base = requestedBase || (await resolveRepoBaseBranch(repo, await resolveRepoRemote(repo)));
   const url = await createDraftPullRequest(repo.canonicalPath, {
     base,
     title,
@@ -45,30 +40,6 @@ export async function ghPrCreateDraft(
     base,
     head: headBranch,
   };
-}
-
-function resolveBaseBranch(
-  repoPath: string,
-  configuredBase: string | undefined,
-  requestedBase: string | undefined,
-): string {
-  if (configuredBase && requestedBase && configuredBase !== requestedBase) {
-    throw new PullRequestBaseBranchError(
-      `pull request base '${requestedBase}' does not match configured default base '${configuredBase}' for repository '${repoPath}'`,
-    );
-  }
-
-  if (configuredBase) {
-    return configuredBase;
-  }
-
-  if (!requestedBase) {
-    throw new PullRequestBaseBranchError(
-      `pull request base must be provided when repository '${repoPath}' does not define a default PR base branch`,
-    );
-  }
-
-  return requestedBase;
 }
 
 function looksLikeUrl(value: string): boolean {
