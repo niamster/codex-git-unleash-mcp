@@ -8,9 +8,8 @@ Current tool surface:
 - `git_add`
 - `git_commit`
 - `git_push`
-
-Not implemented yet:
-
+- `git_branch_create`
+- `git_branch_switch`
 - `gh_pr_create_draft`
 
 ## Prerequisites
@@ -47,7 +46,8 @@ Notes:
 
 - `path` must be an absolute path or start with `~/`
 - branch patterns are full-match regexes against the current branch name
-- `git_add`, `git_commit`, and `git_push` require the current branch to match one of the configured patterns
+- `git_add`, `git_commit`, `git_branch_create`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
+- `git_branch_switch` requires a clean worktree and an explicit existing local branch name
 - `git_status` only requires the repository to be allowlisted
 
 ## Run Locally
@@ -114,15 +114,21 @@ Once registered, Codex should be able to use:
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository
 - `git_commit` with a normal commit message on an allowed branch
+- `git_branch_create` to create a local branch from the configured upstream base without switching to it
+- `git_branch_switch` to switch to an existing local branch when the worktree is clean
 - `git_push` to push the current branch to the configured default remote
+- `gh_pr_create_draft` to create a draft PR for the current branch against the configured base policy
 
 Current behavior:
 
 - `git_add` rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` rejects empty commit messages
 - `git_commit` rejects empty commits
+- `git_branch_create` fetches the configured upstream base and creates a branch ref without switching the working tree
+- `git_branch_switch` only switches to an explicit existing local branch and rejects dirty worktrees
 - `git_push` only pushes `HEAD` to `refs/heads/<current-branch>` on the configured default remote
 - `git_push` does not allow arbitrary refspecs or force-like behavior
+- `gh_pr_create_draft` is draft-only and constrains the base branch to repository policy
 - mutating tools reject detached HEAD
 
 ## Example Config For This Repo
@@ -149,5 +155,5 @@ repositories:
 ## Current Limitations
 
 - output is returned as JSON text content rather than richer structured MCP content
-- there is no GitHub PR support yet
+- there is no general-purpose fetch helper yet
 - the current setup assumes local `git` is available

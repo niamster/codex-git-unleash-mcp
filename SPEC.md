@@ -37,6 +37,7 @@ The initial tool surface should be fixed and explicit.
 - `git_commit`
 - `git_push`
 - `git_branch_create`
+- `git_branch_switch`
 
 ### GitHub tools
 
@@ -75,6 +76,7 @@ At minimum, mutating operations include:
 - `git_commit`
 - `git_push`
 - `git_branch_create`
+- `git_branch_switch`
 - `gh_pr_create_draft`
 
 Read-only operations such as `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
@@ -99,8 +101,7 @@ The server must reject any attempt to perform operations outside the fixed tool 
 - arbitrary shell execution
 - arbitrary `git` passthrough
 - arbitrary `gh` passthrough
-- branch switching
-- checkout, switch, reset, rebase, cherry-pick, merge, stash, tag deletion, branch deletion
+- checkout, switch, reset, rebase, cherry-pick, merge, stash, tag deletion, branch deletion outside the constrained supported branch-switch tool
 - `git commit --amend`
 - empty commits unless explicitly designed and approved later
 - force push
@@ -184,6 +185,20 @@ Requirements:
 - the new branch name must be provided as structured input
 - the tool must create a branch ref only and must not switch the working tree
 - the tool must not accept arbitrary source refs or checkout-like behavior
+
+### `git_branch_switch`
+
+Purpose:
+
+- switch to an existing local branch in a tightly constrained way
+
+Requirements:
+
+- repository must be allowlisted
+- the worktree must be clean
+- the target branch name must be provided explicitly
+- the target branch must already exist locally
+- the tool must not create branches, switch to arbitrary refs, or allow detached checkout
 
 ### `gh_pr_create_draft`
 
@@ -270,6 +285,7 @@ Examples:
 - unsupported operation
 - force-like or amend-like behavior requested
 - branch creation from arbitrary refs is not supported
+- dirty-worktree branch switching is not supported
 - GitHub authentication missing
 - push rejected by remote
 

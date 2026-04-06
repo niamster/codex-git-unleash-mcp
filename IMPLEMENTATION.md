@@ -60,6 +60,7 @@ src/
     gitCommit.ts
     gitPush.ts
     gitBranchCreate.ts
+    gitBranchSwitch.ts
     ghPrCreateDraft.ts
   types/
     config.ts
@@ -237,6 +238,7 @@ Examples:
 - `gitPushArgs(remote, branch)`
 - `gitFetchBranchArgs(remote, branch)`
 - `gitCreateBranchArgs(newBranch, startPoint)`
+- `gitSwitchBranchArgs(branch)`
 
 The tool handlers should not assemble ad hoc command arrays inline. This reduces drift and makes argument-level testing easier.
 
@@ -427,6 +429,37 @@ type GitBranchCreateOutput = {
 };
 ```
 
+### `git_branch_switch`
+
+Suggested input:
+
+```ts
+type GitBranchSwitchInput = {
+  repo_path: string;
+  branch: string;
+};
+```
+
+Validation:
+
+- repository must be allowlisted
+- worktree must be clean
+- `branch` must be non-empty after trimming
+- `branch` must already exist locally
+- no arbitrary ref checkout or detached checkout
+
+Execution:
+
+- switch to the explicit local branch
+
+Suggested output:
+
+```ts
+type GitBranchSwitchOutput = {
+  branch: string;
+};
+```
+
 ### `gh_pr_create_draft`
 
 Suggested input:
@@ -545,6 +578,8 @@ Cover:
 - empty commit denied
 - successful branch creation from fetched upstream base
 - duplicate branch creation denied
+- clean-worktree branch switch succeeds
+- dirty-worktree branch switch is denied
 
 ### Integration tests for GitHub-facing behavior
 
@@ -583,19 +618,25 @@ Implement in phases to reduce risk.
 - remote policy enforcement
 - better error mapping
 
-### Phase 4
+### Completed Core Workflow
 
+- config loading and authorization
+- `git_status`
+- `git_add`
+- `git_commit`
+- `git_push`
 - `git_branch_create`
-- fetch/base-branch policy enforcement
-- docs updates for PR setup flow
-
-### Phase 5
-
+- `git_branch_switch`
 - `gh_pr_create_draft`
-- `gh` integration
-- describe polish
 
-This sequence gets the safety-critical core in place before networked mutating operations.
+The core constrained Git/GitHub workflow is now implemented end-to-end.
+
+### Next Steps
+
+- richer structured MCP output instead of JSON text blobs
+- better GitHub/authentication failure mapping
+- docs and describe polish
+- optional constrained `git_fetch` support if upstream refresh through MCP proves useful
 
 ## Deferred Work
 
