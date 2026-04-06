@@ -642,13 +642,7 @@ The core constrained Git/GitHub workflow is now implemented end-to-end.
 
 ### Suggested Workflow
 
-For this repository and in general, the intended end-to-end workflow is:
-
-1. create and switch to a new branch from the detected upstream base
-2. do planning and coding work
-3. commit through the constrained commit tool
-4. push the current branch through the constrained push tool
-5. create a draft PR through the constrained GitHub tool
+See [AGENTS.md](AGENTS.md) for the suggested workflow.
 
 ## Deferred Work
 
