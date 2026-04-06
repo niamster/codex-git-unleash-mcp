@@ -82,6 +82,34 @@ export class BranchNotFoundError extends Error {
   }
 }
 
+export class DraftPrsDisabledError extends Error {
+  constructor(repoPath: string) {
+    super(`draft PR creation is disabled for repository '${repoPath}'`);
+    this.name = "DraftPrsDisabledError";
+  }
+}
+
+export class EmptyPullRequestTitleError extends Error {
+  constructor() {
+    super("pull request title must be non-empty");
+    this.name = "EmptyPullRequestTitleError";
+  }
+}
+
+export class PullRequestBaseBranchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PullRequestBaseBranchError";
+  }
+}
+
+export class PullRequestUrlParseError extends Error {
+  constructor(output: string) {
+    super(`could not parse pull request URL from gh output: ${output.trim() || "empty output"}`);
+    this.name = "PullRequestUrlParseError";
+  }
+}
+
 export class CommandExecutionError extends Error {
   public readonly command: string;
   public readonly args: string[];
