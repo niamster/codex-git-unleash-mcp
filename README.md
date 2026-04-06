@@ -4,6 +4,10 @@ Local MCP server for a narrow, policy-constrained set of Git and GitHub operatio
 
 It exists to handle a small approved workflow through MCP tools instead of ad hoc shell access: inspect repository state, stage and commit changes, fetch and push the current branch, create or switch local branches in a constrained way, and open draft pull requests.
 
+This is especially useful with OpenAI Codex in `workspace-write`, where protected-path behavior still applies to paths such as `.git`. In practice, shell Git operations that write repository metadata can still be blocked or require approval, so using constrained MCP tools avoids that class of friction. See OpenAI Codex docs: [Protected paths in writable roots](https://developers.openai.com/codex/agent-approvals-security#protected-paths-in-writable-roots).
+
+For the suggested repository workflow used in this repo (and in general), see [AGENTS.md](./AGENTS.md).
+
 Current tool surface:
 
 - `git_status`
