@@ -6,6 +6,7 @@ import {
   gitCreateBranchArgs,
   gitFetchBranchArgs,
   gitPushArgs,
+  gitSwitchBranchArgs,
 } from "../src/exec/git.js";
 
 describe("git argument builders", () => {
@@ -36,5 +37,9 @@ describe("git argument builders", () => {
       "feature/test-pr",
       "refs/remotes/origin/main",
     ]);
+  });
+
+  it("builds constrained git branch switch arguments", () => {
+    expect(gitSwitchBranchArgs("feature/test-pr")).toEqual(["checkout", "feature/test-pr"]);
   });
 });

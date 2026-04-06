@@ -6,6 +6,7 @@ import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
 import { gitBranchCreate } from "./tools/gitBranchCreate.js";
+import { gitBranchSwitch } from "./tools/gitBranchSwitch.js";
 import { gitCommit } from "./tools/gitCommit.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitStatus } from "./tools/gitStatus.js";
@@ -94,6 +95,28 @@ export function createServer(config: Config): McpServer {
       const repo = await resolveAllowedRepo(config, repo_path);
       await requireAllowedBranch(repo);
       const result = await gitBranchCreate(repo, new_branch);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "git_branch_switch",
+    "Switch to an existing local branch in an allowlisted repository. This tool mutates repository state, requires the worktree to be clean, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
+    {
+      repo_path: z.string().min(1),
+      branch: z.string(),
+    },
+    async ({ repo_path, branch }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      const result = await gitBranchSwitch(repo, branch);
 
       return {
         content: [

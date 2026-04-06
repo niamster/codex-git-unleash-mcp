@@ -68,6 +68,20 @@ export class MissingDefaultBaseBranchError extends Error {
   }
 }
 
+export class DirtyWorktreeError extends Error {
+  constructor(repoPath: string) {
+    super(`repository '${repoPath}' has uncommitted changes`);
+    this.name = "DirtyWorktreeError";
+  }
+}
+
+export class BranchNotFoundError extends Error {
+  constructor(branch: string, repoPath: string) {
+    super(`branch '${branch}' does not exist in repository '${repoPath}'`);
+    this.name = "BranchNotFoundError";
+  }
+}
+
 export class CommandExecutionError extends Error {
   public readonly command: string;
   public readonly args: string[];

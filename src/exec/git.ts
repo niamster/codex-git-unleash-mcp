@@ -24,6 +24,10 @@ export function gitCreateBranchArgs(newBranch: string, startPoint: string): stri
   return ["branch", newBranch, startPoint];
 }
 
+export function gitSwitchBranchArgs(branch: string): string[] {
+  return ["checkout", branch];
+}
+
 export async function getGitTopLevel(cwd: string): Promise<string> {
   const result = await runCommand({
     cwd,
@@ -115,6 +119,14 @@ export async function branchExists(cwd: string, branch: string): Promise<boolean
   } catch {
     return false;
   }
+}
+
+export async function switchBranch(cwd: string, branch: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitSwitchBranchArgs(branch),
+  });
 }
 
 export async function getHeadCommit(cwd: string): Promise<{ oid: string; summary: string }> {
