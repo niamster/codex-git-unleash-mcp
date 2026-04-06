@@ -1,10 +1,12 @@
 # codex-git-unleash-mcp
 
-Local MCP server for a narrow, policy-constrained set of Git and GitHub operations that Codex can call without repeated shell approval prompts.
+Local MCP server for a narrow, policy-constrained set of Git and GitHub operations that Codex can call without repeated sandbox approval prompts.
 
-It exists to handle a small approved workflow through MCP tools instead of ad hoc shell access: inspect repository state, stage and commit changes, fetch and push the current branch, create or switch local branches in a constrained way, and open draft pull requests.
+It exists to handle a small approved workflow through MCP tools: inspect repository state, stage and commit changes, fetch and push the current branch, create or switch local branches in a constrained way, and open draft pull requests.
 
-This is especially useful with OpenAI Codex in `workspace-write`, where protected-path behavior still applies to paths such as `.git`. In practice, shell Git operations that write repository metadata can still be blocked or require approval, so using constrained MCP tools avoids that class of friction. See OpenAI Codex docs: [Protected paths in writable roots](https://developers.openai.com/codex/agent-approvals-security#protected-paths-in-writable-roots).
+This is especially useful with OpenAI Codex sandbox, where protected-path behavior still applies to paths such as `.git`. In practice, shell Git operations that write repository metadata can still be blocked or require approval, while direct GitHub network mutations may still be allowed or approval-gated depending on runtime policy.
+
+See OpenAI Codex docs: [Protected paths in writable roots](https://developers.openai.com/codex/agent-approvals-security#protected-paths-in-writable-roots).
 
 For the suggested repository workflow used in this repo (and in general), see [AGENTS.md](./AGENTS.md).
 
@@ -45,7 +47,7 @@ Example:
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
     allowed_branch_patterns:
-      - "^dm/.*$"
+      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
     allow_draft_prs: true
 ```
