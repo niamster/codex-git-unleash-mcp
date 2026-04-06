@@ -593,30 +593,6 @@ Cover:
 
 Live GitHub integration tests can be deferred until later.
 
-## Rollout Plan
-
-Implement in phases to reduce risk.
-
-### Phase 1
-
-- config loading
-- repository authorization
-- branch authorization
-- `git_status`
-
-### Phase 2
-
-- `git_add`
-- `git_commit`
-- path validation
-- command builder tests
-
-### Phase 3
-
-- `git_push`
-- remote policy enforcement
-- better error mapping
-
 ### Completed Core Workflow
 
 - config loading and authorization
@@ -630,35 +606,3 @@ Implement in phases to reduce risk.
 - `gh_pr_create_draft`
 
 The core constrained Git/GitHub workflow is now implemented end-to-end.
-
-### Next Steps
-
-- richer structured MCP output instead of JSON text blobs
-  The current server returns JSON serialized into MCP text content. A useful follow-up would be returning cleaner structured fields for status, branch operations, and PR creation results so clients do not need to parse text payloads.
-- better GitHub/authentication failure mapping
-  Today most `gh` failures surface through the generic command-execution path. A follow-up could detect common authentication and authorization cases and return more specific policy-oriented errors.
-- richer server-level guidance
-  The tool descriptions and top-level docs now cover the implemented workflow and constraints, but the server could still expose a stronger top-level description of the trust boundary and authorized repository scope if MCP clients start surfacing that metadata more prominently.
-
-### Required Workflow
-
-See [AGENTS.md](AGENTS.md) for the required workflow.
-
-## Deferred Work
-
-Out of scope for the first implementation:
-
-- direct GitHub API client
-- arbitrary GitHub read helpers
-- support for multiple remotes per operation
-- advanced Git pathspec support
-- branch switching
-- configurable commit policy hooks
-- server-managed credential handling
-
-## Open Questions To Revisit After V1
-
-- whether to return richer structured Git status instead of mostly normalized text
-- whether PR base branch input should be restricted to a configured allowlist rather than a single default
-- whether server-level descriptions should enumerate all repositories or keep that implicit
-- whether some read-only GitHub tools are worth adding

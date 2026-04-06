@@ -294,17 +294,6 @@ Examples:
 
 The server should prefer clear denials over implicit fallback behavior.
 
-## Open Questions
-
-These are not blockers for the spec, but they should be resolved during implementation design:
-
-- exact MCP framework and language choice
-- exact config file path and format
-- whether `git_status` should require branch authorization or only repository authorization
-- whether empty commits should always be denied
-- whether PR creation should infer defaults or require explicit base branch input
-- whether GitHub operations should use `gh`, direct API calls, or a mix
-
 ## Reference
 
 OpenAI Codex protected-path behavior:
