@@ -5,6 +5,7 @@ import type { Config } from "./types/config.js";
 import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
+import { gitBranchCreate } from "./tools/gitBranchCreate.js";
 import { gitCommit } from "./tools/gitCommit.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitStatus } from "./tools/gitStatus.js";
@@ -70,6 +71,29 @@ export function createServer(config: Config): McpServer {
       const repo = await resolveAllowedRepo(config, repo_path);
       await requireAllowedBranch(repo);
       const result = await gitCommit(repo, message);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "git_branch_create",
+    "Create a new local branch from the configured upstream base branch for an allowlisted repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, fetches the configured base first, and does not switch the working tree.",
+    {
+      repo_path: z.string().min(1),
+      new_branch: z.string(),
+    },
+    async ({ repo_path, new_branch }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      await requireAllowedBranch(repo);
+      const result = await gitBranchCreate(repo, new_branch);
 
       return {
         content: [

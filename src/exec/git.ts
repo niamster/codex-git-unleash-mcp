@@ -16,6 +16,14 @@ export function gitPushArgs(remote: string, branch: string): string[] {
   return ["push", remote, `HEAD:refs/heads/${branch}`];
 }
 
+export function gitFetchBranchArgs(remote: string, branch: string): string[] {
+  return ["fetch", remote, branch];
+}
+
+export function gitCreateBranchArgs(newBranch: string, startPoint: string): string[] {
+  return ["branch", newBranch, startPoint];
+}
+
 export async function getGitTopLevel(cwd: string): Promise<string> {
   const result = await runCommand({
     cwd,
@@ -78,6 +86,35 @@ export async function pushBranch(cwd: string, remote: string, branch: string): P
     command: "git",
     argv: gitPushArgs(remote, branch),
   });
+}
+
+export async function fetchBranch(cwd: string, remote: string, branch: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitFetchBranchArgs(remote, branch),
+  });
+}
+
+export async function createBranch(cwd: string, newBranch: string, startPoint: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitCreateBranchArgs(newBranch, startPoint),
+  });
+}
+
+export async function branchExists(cwd: string, branch: string): Promise<boolean> {
+  try {
+    await runCommand({
+      cwd,
+      command: "git",
+      argv: ["rev-parse", "--verify", `refs/heads/${branch}`],
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getHeadCommit(cwd: string): Promise<{ oid: string; summary: string }> {

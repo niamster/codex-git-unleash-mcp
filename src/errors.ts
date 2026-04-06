@@ -47,6 +47,27 @@ export class EmptyCommitError extends Error {
   }
 }
 
+export class EmptyBranchNameError extends Error {
+  constructor() {
+    super("branch name must be non-empty");
+    this.name = "EmptyBranchNameError";
+  }
+}
+
+export class BranchAlreadyExistsError extends Error {
+  constructor(branch: string, repoPath: string) {
+    super(`branch '${branch}' already exists in repository '${repoPath}'`);
+    this.name = "BranchAlreadyExistsError";
+  }
+}
+
+export class MissingDefaultBaseBranchError extends Error {
+  constructor(repoPath: string) {
+    super(`repository '${repoPath}' does not define a default PR base branch`);
+    this.name = "MissingDefaultBaseBranchError";
+  }
+}
+
 export class CommandExecutionError extends Error {
   public readonly command: string;
   public readonly args: string[];

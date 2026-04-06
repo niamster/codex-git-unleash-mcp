@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { gitAddArgs, gitCommitArgs, gitPushArgs } from "../src/exec/git.js";
+import {
+  gitAddArgs,
+  gitCommitArgs,
+  gitCreateBranchArgs,
+  gitFetchBranchArgs,
+  gitPushArgs,
+} from "../src/exec/git.js";
 
 describe("git argument builders", () => {
   it("builds constrained git add arguments", () => {
@@ -18,5 +24,17 @@ describe("git argument builders", () => {
 
   it("builds constrained git push arguments", () => {
     expect(gitPushArgs("origin", "main")).toEqual(["push", "origin", "HEAD:refs/heads/main"]);
+  });
+
+  it("builds constrained git fetch arguments", () => {
+    expect(gitFetchBranchArgs("origin", "main")).toEqual(["fetch", "origin", "main"]);
+  });
+
+  it("builds constrained git branch creation arguments", () => {
+    expect(gitCreateBranchArgs("feature/test-pr", "refs/remotes/origin/main")).toEqual([
+      "branch",
+      "feature/test-pr",
+      "refs/remotes/origin/main",
+    ]);
   });
 });
