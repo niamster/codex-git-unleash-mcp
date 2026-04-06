@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
@@ -28,11 +29,13 @@ export async function loadConfig(configPath: string): Promise<Config> {
   const seenPaths = new Set<string>();
 
   for (const repo of config.repositories) {
-    if (!path.isAbsolute(repo.path)) {
-      throw new ConfigError(`repository path '${repo.path}' must be absolute`);
+    const expandedPath = expandHomeDir(repo.path);
+
+    if (!path.isAbsolute(expandedPath)) {
+      throw new ConfigError(`repository path '${repo.path}' must be absolute or start with '~/'`);
     }
 
-    const canonicalPath = await fs.realpath(repo.path);
+    const canonicalPath = await fs.realpath(expandedPath);
     if (seenPaths.has(canonicalPath)) {
       throw new ConfigError(`duplicate configured repository path '${canonicalPath}'`);
     }
@@ -50,7 +53,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
     });
 
     repositories.push({
-      path: repo.path,
+      path: expandedPath,
       canonicalPath,
       allowedBranchPatterns,
       defaultRemote: repo.default_remote ?? "origin",
@@ -62,4 +65,20 @@ export async function loadConfig(configPath: string): Promise<Config> {
   }
 
   return { repositories };
+}
+
+function expandHomeDir(inputPath: string): string {
+  if (inputPath === "~") {
+    return os.homedir();
+  }
+
+  if (inputPath.startsWith(`~${path.sep}`)) {
+    return path.join(os.homedir(), inputPath.slice(2));
+  }
+
+  if (inputPath.startsWith("~/")) {
+    return path.join(os.homedir(), inputPath.slice(2));
+  }
+
+  return inputPath;
 }
