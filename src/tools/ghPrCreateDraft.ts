@@ -16,15 +16,14 @@ export type GhPrCreateDraftResult = {
 export async function ghPrCreateDraft(
   repo: RepoPolicy,
   headBranch: string,
-  input: { title?: string; body?: string; base?: string; fill?: boolean },
+  input: { title: string; body: string; base?: string },
 ): Promise<GhPrCreateDraftResult> {
   if (!repo.allowDraftPrs) {
     throw new DraftPrsDisabledError(repo.canonicalPath);
   }
 
-  const fill = input.fill ?? false;
-  const title = input.title?.trim();
-  if (!fill && !title) {
+  const title = input.title.trim();
+  if (!title) {
     throw new EmptyPullRequestTitleError();
   }
 
@@ -33,7 +32,6 @@ export async function ghPrCreateDraft(
   const base = resolveBaseBranch(repo.canonicalPath, configuredBase, requestedBase);
   const url = await createDraftPullRequest(repo.canonicalPath, {
     base,
-    fill,
     title,
     body: input.body,
   });
