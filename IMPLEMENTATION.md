@@ -60,6 +60,7 @@ src/
     gitCommit.ts
     gitPush.ts
     gitBranchCreate.ts
+    gitBranchSwitch.ts
     ghPrCreateDraft.ts
   types/
     config.ts
@@ -237,6 +238,7 @@ Examples:
 - `gitPushArgs(remote, branch)`
 - `gitFetchBranchArgs(remote, branch)`
 - `gitCreateBranchArgs(newBranch, startPoint)`
+- `gitSwitchBranchArgs(branch)`
 
 The tool handlers should not assemble ad hoc command arrays inline. This reduces drift and makes argument-level testing easier.
 
@@ -427,6 +429,37 @@ type GitBranchCreateOutput = {
 };
 ```
 
+### `git_branch_switch`
+
+Suggested input:
+
+```ts
+type GitBranchSwitchInput = {
+  repo_path: string;
+  branch: string;
+};
+```
+
+Validation:
+
+- repository must be allowlisted
+- worktree must be clean
+- `branch` must be non-empty after trimming
+- `branch` must already exist locally
+- no arbitrary ref checkout or detached checkout
+
+Execution:
+
+- switch to the explicit local branch
+
+Suggested output:
+
+```ts
+type GitBranchSwitchOutput = {
+  branch: string;
+};
+```
+
 ### `gh_pr_create_draft`
 
 Suggested input:
@@ -545,6 +578,8 @@ Cover:
 - empty commit denied
 - successful branch creation from fetched upstream base
 - duplicate branch creation denied
+- clean-worktree branch switch succeeds
+- dirty-worktree branch switch is denied
 
 ### Integration tests for GitHub-facing behavior
 
@@ -583,19 +618,44 @@ Implement in phases to reduce risk.
 - remote policy enforcement
 - better error mapping
 
-### Phase 4
+### Completed Core Workflow
 
+- config loading and authorization
+- `git_status`
+- `git_add`
+- `git_commit`
+- `git_push`
 - `git_branch_create`
-- fetch/base-branch policy enforcement
-- docs updates for PR setup flow
-
-### Phase 5
-
+- `git_branch_switch`
 - `gh_pr_create_draft`
-- `gh` integration
-- describe polish
 
-This sequence gets the safety-critical core in place before networked mutating operations.
+The core constrained Git/GitHub workflow is now implemented end-to-end.
+
+### Next Steps
+
+- richer structured MCP output instead of JSON text blobs
+  The current server returns JSON serialized into MCP text content. A useful follow-up would be returning cleaner structured fields for status, branch operations, and PR creation results so clients do not need to parse text payloads.
+- better GitHub/authentication failure mapping
+  Today most `gh` failures surface through the generic command-execution path. A follow-up could detect common authentication and authorization cases and return more specific policy-oriented errors.
+- branch workflow ergonomics
+  The current design keeps `git_branch_create` and `git_branch_switch` as separate constrained primitives. A follow-up could either:
+  - allow `git_branch_create` to accept an optional base branch name while still defaulting to `default_pr_base`
+  - add a higher-level convenience tool that creates and switches in one step while preserving the clean-worktree safety checks
+- docs and describe polish
+  The server descriptions and top-level docs now match the current tool surface, but could be improved further with clearer workflow examples and richer server-level guidance.
+- optional constrained `git_fetch` support if upstream refresh through MCP proves useful
+  If fetching remote-tracking refs keeps showing up as a workflow gap, add a constrained fetch helper fixed to the configured remote and plain branch names only.
+
+### Suggested Workflow
+
+For this repository and in general, the intended end-to-end workflow is:
+
+1. create a new branch from the configured upstream base
+2. switch to that branch
+3. do planning and coding work
+4. commit through the constrained commit tool
+5. push the current branch through the constrained push tool
+6. create a draft PR through the constrained GitHub tool
 
 ## Deferred Work
 
