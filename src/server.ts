@@ -9,6 +9,7 @@ import { gitBranchCreateAndSwitch } from "./tools/gitBranchCreateAndSwitch.js";
 import { gitBranchSwitch } from "./tools/gitBranchSwitch.js";
 import { ghPrCreateDraft } from "./tools/ghPrCreateDraft.js";
 import { gitCommit } from "./tools/gitCommit.js";
+import { gitFetch } from "./tools/gitFetch.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitStatus } from "./tools/gitStatus.js";
 
@@ -118,6 +119,28 @@ export function createServer(config: Config): McpServer {
     async ({ repo_path, branch }) => {
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitBranchSwitch(repo, branch);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "git_fetch",
+    "Fetch a plain branch name from the detected remote for an allowlisted repository. This tool refreshes remote-tracking refs, defaults to 'main' when no branch is provided, and does not allow arbitrary fetch arguments.",
+    {
+      repo_path: z.string().min(1),
+      branch: z.string().optional(),
+    },
+    async ({ repo_path, branch }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      const result = await gitFetch(repo, { branch });
 
       return {
         content: [
