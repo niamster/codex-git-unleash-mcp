@@ -29,6 +29,7 @@ The server is intentionally not a generic `git` or `gh` proxy. Inputs are struct
 - Node.js
 - npm
 - `git`
+- `gh`
 
 ## Install
 
@@ -121,7 +122,7 @@ Then verify:
 codex mcp list
 ```
 
-### The Purpose Of The Wrapper Script
+### The Purpose of the Wrapper Script
 
 The wrapper is there so the MCP server can inherit or reconstruct the SSH agent socket when Git operations need it.
 
@@ -150,37 +151,25 @@ On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before fail
 
 Once registered, Codex should be able to use:
 
-- `git_repo_policy` to inspect the configured branch patterns and related defaults for an allowlisted repository
+- `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, default remote, and draft-PR setting for an allowlisted repository
 - `git_status` for an allowlisted repository
-- `git_add` for repository-relative paths inside an allowlisted repository
-- `git_commit` with a normal commit message on an allowed branch
-- `git_fetch` to fetch a plain branch name from the detected remote, defaulting to `main`
-- `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it
-- `git_branch_switch` to switch to an existing local branch when the worktree is clean
-- `git_push` to push the current branch to the detected remote
-- `gh_pr_create_draft` to create a draft PR for the current branch using an explicit base or the detected default branch
+- `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
+- `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
+- `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and defaults the branch to `main`
+- `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it; it rejects requested branch names that do not match the configured allowed branch patterns
+- `git_branch_switch` to switch to an existing local branch when the worktree is clean; it does not create branches or allow detached checkouts
+- `git_push` to push the current branch to the detected remote; it only pushes `HEAD` to `refs/heads/<current-branch>` and does not allow arbitrary refspecs or force-like behavior
+- `gh_pr_create_draft` to create a draft PR for the current branch using an explicit base or the detected default branch; it is draft-only and requires a non-empty title
 
-Current behavior:
-
-- `git_repo_policy` returns the configured path, canonical path, allowed branch patterns, default remote, and draft-PR setting for an allowlisted repository
-- `git_add` rejects absolute paths and repository-escaping paths like `../x`
-- `git_commit` rejects empty commit messages
-- `git_commit` rejects empty commits
-- `git_branch_create_and_switch` rejects requested branch names that do not match the configured allowed branch patterns
-- `git_branch_create_and_switch` resolves the remote at runtime, uses the explicit base branch when provided or detects one otherwise, fetches that base, creates the local branch, and switches to it
-- `git_branch_switch` only switches to an explicit existing local branch and rejects dirty worktrees
-- `git_fetch` only fetches `git fetch <resolved-remote> <branch>` and defaults the branch to `main`
-- `git_push` only pushes `HEAD` to `refs/heads/<current-branch>` on the resolved remote
-- `git_push` does not allow arbitrary refspecs or force-like behavior
-- `gh_pr_create_draft` is draft-only, requires a non-empty title, and uses either the explicit `base` input or the detected default branch
-- mutating tools reject detached HEAD
+Mutating tools reject detached HEAD.
 
 ## Remote And Base Resolution
 
 Some operations resolve defaults at runtime instead of requiring everything to be pinned in config.
 
 - `git_fetch`, `git_push`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
-- `git_branch_create_and_switch` and `gh_pr_create_draft` resolve the base branch by preferring the remote HEAD branch and falling back to the GitHub repository default branch
+- `git_fetch`, `git_branch_create_and_switch`, and `gh_pr_create_draft` accept an explicit branch or base input
+- `git_branch_create_and_switch` and `gh_pr_create_draft` resolve the base branch by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
 - `git_fetch` keeps a narrower default and uses `main` when no branch is provided
 
 This keeps the tools constrained while still working across repositories that use different default branches or remotes.
@@ -196,19 +185,3 @@ repositories:
       - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
 ```
-
-If you want to allow only personal feature branches:
-
-```yaml
-repositories:
-  - path: ~/projects/codex-git-unleash-mcp
-    allowed_branch_patterns:
-      - "^user/.*$"
-      - "^feature/[a-z0-9._-]+$"
-```
-
-## Current Limitations
-
-- output is returned as JSON text content rather than richer structured MCP content
-- the current setup assumes local `git` is available
-- `gh_pr_create_draft` depends on a working `gh` CLI login for the target repository
