@@ -32,6 +32,7 @@ The initial tool surface should be fixed and explicit.
 
 ### Git tools
 
+- `git_repo_policy`
 - `git_status`
 - `git_add`
 - `git_commit`
@@ -79,9 +80,10 @@ At minimum, mutating operations include:
 
 Branch-workflow exception:
 
-- `git_branch_create_and_switch` and `git_branch_switch` are mutating but may be allowed without current-branch pattern checks as long as they preserve the clean-worktree and constrained-ref safety rules
+- `git_branch_create_and_switch` and `git_branch_switch` may be allowed without current-branch pattern checks as long as they preserve the clean-worktree and constrained-ref safety rules
+- `git_branch_create_and_switch` must still validate the requested `new_branch` name against the configured allowed branch patterns before creating and switching to it
 
-Read-only operations such as `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
+Read-only operations such as `git_repo_policy` and `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
 
 ## Safety Constraints
 
@@ -130,6 +132,18 @@ Requirements:
 - repository must be allowlisted
 - no mutation
 - output should be structured where practical, or at least normalized for MCP consumption
+
+### `git_repo_policy`
+
+Purpose:
+
+- show the configured policy for an allowed repository
+
+Requirements:
+
+- repository must be allowlisted
+- no mutation
+- output should include the configured allowed branch patterns and related repository defaults in a structured shape suitable for MCP consumers
 
 ### `git_add`
 
@@ -183,6 +197,7 @@ Requirements:
 
 - repository must be allowlisted
 - the worktree must be clean
+- the requested `new_branch` name must match an allowed full-match pattern for the repository
 - the tool must infer the remote at runtime, preferring the current branch remote, then `origin`, with configuration override allowed
 - the tool may accept an explicit plain branch name as the upstream base branch
 - when no base branch is provided, the tool must infer the base branch from the remote HEAD first, with GitHub default-branch lookup as a fallback

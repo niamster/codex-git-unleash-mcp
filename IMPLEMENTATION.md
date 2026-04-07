@@ -55,6 +55,7 @@ src/
     git.ts
     gh.ts
   tools/
+    gitRepoPolicy.ts
     gitStatus.ts
     gitAdd.ts
     gitCommit.ts
@@ -71,6 +72,7 @@ tests/
   repoAuth.test.ts
   branchAuth.test.ts
   pathValidation.test.ts
+  gitRepoPolicy.test.ts
   gitArgs.test.ts
   ghArgs.test.ts
   integration/
@@ -141,10 +143,12 @@ Each tool should follow the same top-level policy order:
 2. Resolve the requested repository path.
 3. Canonicalize the repository path and match it to a configured repository.
 4. Verify the repository looks like a Git repository.
-5. If the tool mutates content history or remote state, read the current branch and validate it against full-match branch regexes.
-6. Run tool-specific validation.
-7. Execute the fixed command or API call.
-8. Return structured output or structured failure.
+5. If the tool is read-only and policy-oriented, return the configured repository policy.
+6. If the tool mutates content history or remote state, read the current branch and validate it against full-match branch regexes when applicable.
+7. If the tool creates a new branch, validate the requested branch name against full-match branch regexes before creating it.
+8. Run tool-specific validation.
+9. Execute the fixed command or API call.
+10. Return structured output or structured failure.
 
 This shared order matters because it keeps error behavior predictable.
 
@@ -175,6 +179,8 @@ Implementation requirements:
 Implementation note:
 
 Even if regexes are already written with `^...$`, the code should still use full-match semantics rather than substring-style matching.
+
+For branch-creation tools, validate the requested new branch name against the same full-match policy before creating and switching to it. This keeps branch creation aligned with the later mutation rules instead of letting an invalid branch name survive until `git_add`, `git_commit`, or `git_push`.
 
 ## Path Validation For `git_add`
 
@@ -407,6 +413,7 @@ Validation:
 - repository must be allowlisted
 - worktree must be clean
 - `new_branch` must be non-empty after trimming
+- `new_branch` must match at least one configured allowed branch pattern
 - `new_branch` must not already exist
 - resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - if `branch` is provided, treat it as the upstream base branch name
@@ -596,6 +603,7 @@ Live GitHub integration tests can be deferred until later.
 ### Completed Core Workflow
 
 - config loading and authorization
+- `git_repo_policy`
 - `git_status`
 - `git_add`
 - `git_commit`
