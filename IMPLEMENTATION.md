@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document translates [SPEC.md](/Users/dm/projects/codex-git-unleash-mcp/SPEC.md) into a concrete implementation approach.
+This document translates [SPEC.md](./SPEC.md) into a concrete implementation approach.
 
 The goal is to build a local MCP server that exposes a narrow, structured set of Git and GitHub operations that Codex can call without repeated shell approval prompts, while keeping the trust boundary explicit and small.
 
@@ -104,7 +104,7 @@ Initial YAML schema:
 repositories:
   - path: /absolute/path/to/repo
     allowed_branch_patterns:
-      - "^dm/.*$"
+      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
     default_remote: origin
     allow_draft_prs: true

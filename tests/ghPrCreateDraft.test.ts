@@ -29,7 +29,7 @@ vi.mock("../src/tools/runtimeDefaults.js", () => ({
 const repo: RepoPolicy = {
   path: "/tmp/repo",
   canonicalPath: "/tmp/repo",
-  allowedBranchPatterns: [/^dm\/.*$/],
+  allowedBranchPatterns: [/^user\/.*$/],
   allowDraftPrs: true,
 };
 
@@ -45,7 +45,7 @@ describe("ghPrCreateDraft", () => {
     resolveRepoRemote.mockResolvedValue("origin");
     resolveRepoBaseBranch.mockResolvedValue("main");
 
-    const result = await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+    const result = await ghPrCreateDraft(repo, "user/gh-pr-create-draft-v2", {
       title: "Add draft PR tool",
       body: "Implements gh_pr_create_draft",
     });
@@ -58,7 +58,7 @@ describe("ghPrCreateDraft", () => {
     expect(result).toEqual({
       url: "https://github.com/example/repo/pull/123",
       base: "main",
-      head: "dm/gh-pr-create-draft-v2",
+      head: "user/gh-pr-create-draft-v2",
     });
   });
 
@@ -66,7 +66,7 @@ describe("ghPrCreateDraft", () => {
     createDraftPullRequest.mockResolvedValue("https://github.com/example/repo/pull/124");
     resolveRepoRemote.mockResolvedValue("origin");
 
-    const result = await ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+    const result = await ghPrCreateDraft(repo, "user/gh-pr-create-draft-v2", {
       title: "Add draft PR tool",
       body: "",
       base: "main",
@@ -88,7 +88,7 @@ describe("ghPrCreateDraft", () => {
           ...repo,
           allowDraftPrs: false,
         },
-        "dm/gh-pr-create-draft-v2",
+        "user/gh-pr-create-draft-v2",
         { title: "Add draft PR tool", body: "" },
       ),
     ).rejects.toBeInstanceOf(DraftPrsDisabledError);
@@ -96,7 +96,7 @@ describe("ghPrCreateDraft", () => {
 
   it("rejects empty titles", async () => {
     await expect(
-      ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      ghPrCreateDraft(repo, "user/gh-pr-create-draft-v2", {
         title: "   ",
         body: "",
       }),
@@ -108,7 +108,7 @@ describe("ghPrCreateDraft", () => {
     resolveRepoBaseBranch.mockRejectedValue(new BaseBranchResolutionError("/tmp/repo", "origin"));
 
     await expect(
-      ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      ghPrCreateDraft(repo, "user/gh-pr-create-draft-v2", {
         title: "Add draft PR tool",
         body: "",
       }),
@@ -121,7 +121,7 @@ describe("ghPrCreateDraft", () => {
     resolveRepoBaseBranch.mockResolvedValue("main");
 
     await expect(
-      ghPrCreateDraft(repo, "dm/gh-pr-create-draft-v2", {
+      ghPrCreateDraft(repo, "user/gh-pr-create-draft-v2", {
         title: "Add draft PR tool",
         body: "",
       }),
