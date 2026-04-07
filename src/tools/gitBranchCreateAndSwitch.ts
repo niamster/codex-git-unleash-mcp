@@ -1,3 +1,4 @@
+import { requireAllowedBranchName } from "../auth/branchAuth.js";
 import { BranchAlreadyExistsError, DirtyWorktreeError, EmptyBranchNameError } from "../errors.js";
 import { branchExists, createBranch, fetchBranch, switchBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
@@ -18,6 +19,7 @@ export async function gitBranchCreateAndSwitch(
   if (!normalizedBranch) {
     throw new EmptyBranchNameError();
   }
+  requireAllowedBranchName(repo, normalizedBranch);
 
   const status = await getGitStatus(repo);
   if (!status.isClean) {

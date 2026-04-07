@@ -19,6 +19,13 @@ export class BranchNotAllowedError extends Error {
   }
 }
 
+export class BranchNameNotAllowedError extends Error {
+  constructor(branch: string, repoPath: string) {
+    super(`requested branch '${branch}' does not match allowed patterns for repository '${repoPath}'`);
+    this.name = "BranchNameNotAllowedError";
+  }
+}
+
 export class DetachedHeadError extends Error {
   constructor(repoPath: string) {
     super(`repository '${repoPath}' is in detached HEAD state`);

@@ -3,7 +3,12 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BranchAlreadyExistsError, DirtyWorktreeError, EmptyBranchNameError } from "../src/errors.js";
+import {
+  BranchAlreadyExistsError,
+  BranchNameNotAllowedError,
+  DirtyWorktreeError,
+  EmptyBranchNameError,
+} from "../src/errors.js";
 import {
   getCurrentBranch,
   gitCreateBranchArgs,
@@ -109,6 +114,21 @@ describe("gitBranchCreateAndSwitch", () => {
     await expect(gitBranchCreateAndSwitch(repo, { newBranch: "   " })).rejects.toBeInstanceOf(
       EmptyBranchNameError,
     );
+  });
+
+  it("rejects branch names that do not match allowed patterns", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchCreateAndSwitch(
+        {
+          ...repo,
+          allowedBranchPatterns: [/^feature\/.+$/],
+        },
+        { newBranch: "codex/disallowed" },
+      ),
+    ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
   it("uses an explicit upstream branch when provided", async () => {
