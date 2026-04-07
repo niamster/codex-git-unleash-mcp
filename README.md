@@ -169,8 +169,7 @@ Some operations resolve defaults at runtime instead of requiring everything to b
 
 - `git_fetch`, `git_push`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - `git_fetch`, `git_branch_create_and_switch`, and `gh_pr_create_draft` accept an explicit branch or base input
-- `git_branch_create_and_switch` and `gh_pr_create_draft` resolve the base branch by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
-- `git_fetch` resolves its default branch the same way when no explicit input is provided
+- `git_fetch`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve their default branch or base by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
 
 This keeps the tools constrained while still working across repositories that use different default branches or remotes.
 
