@@ -1,7 +1,7 @@
 import { PathValidationError } from "../errors.js";
 import { fetchBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
-import { resolveRepoRemote } from "./runtimeDefaults.js";
+import { resolveRepoBaseBranch, resolveRepoRemote } from "./runtimeDefaults.js";
 
 export type GitFetchResult = {
   remote: string;
@@ -9,8 +9,12 @@ export type GitFetchResult = {
 };
 
 export async function gitFetch(repo: RepoPolicy, input: { branch?: string }): Promise<GitFetchResult> {
-  const branch = normalizeFetchBranch(input.branch);
   const remote = await resolveRepoRemote(repo);
+  const branch = (input.branch?.trim() || (await resolveRepoBaseBranch(repo, remote))).trim();
+
+  if (!isPlainBranchName(branch)) {
+    throw new PathValidationError(`branch '${branch}' must be a plain branch name`);
+  }
 
   await fetchBranch(repo.canonicalPath, remote, branch);
 
@@ -18,19 +22,6 @@ export async function gitFetch(repo: RepoPolicy, input: { branch?: string }): Pr
     remote,
     branch,
   };
-}
-
-function normalizeFetchBranch(branch: string | undefined): string {
-  const normalized = branch?.trim() ?? "";
-  if (!normalized) {
-    return "main";
-  }
-
-  if (!isPlainBranchName(normalized)) {
-    throw new PathValidationError(`branch '${normalized}' must be a plain branch name`);
-  }
-
-  return normalized;
 }
 
 function isPlainBranchName(branch: string): boolean {

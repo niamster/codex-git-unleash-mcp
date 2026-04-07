@@ -60,7 +60,7 @@ Notes:
 - branch patterns are full-match regexes against the current branch name
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
-- `git_fetch` only requires the repository to be allowlisted and fetches from the resolved remote
+- `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
 - `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
@@ -155,7 +155,7 @@ Once registered, Codex should be able to use:
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
-- `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and defaults the branch to `main`
+- `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and uses an explicit branch when provided or the detected base branch otherwise
 - `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it; it rejects requested branch names that do not match the configured allowed branch patterns
 - `git_branch_switch` to switch to an existing local branch when the worktree is clean; it does not create branches or allow detached checkouts
 - `git_push` to push the current branch to the detected remote; it only pushes `HEAD` to `refs/heads/<current-branch>` and does not allow arbitrary refspecs or force-like behavior
@@ -169,8 +169,7 @@ Some operations resolve defaults at runtime instead of requiring everything to b
 
 - `git_fetch`, `git_push`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - `git_fetch`, `git_branch_create_and_switch`, and `gh_pr_create_draft` accept an explicit branch or base input
-- `git_branch_create_and_switch` and `gh_pr_create_draft` resolve the base branch by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
-- `git_fetch` keeps a narrower default and uses `main` when no branch is provided
+- `git_fetch`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve their default branch or base by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
 
 This keeps the tools constrained while still working across repositories that use different default branches or remotes.
 
