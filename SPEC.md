@@ -259,7 +259,7 @@ Example shape:
 repositories:
   - path: /absolute/path/to/repo
     allowed_branch_patterns:
-      - "^dm/.*$"
+      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
     allow_draft_prs: true
 ```

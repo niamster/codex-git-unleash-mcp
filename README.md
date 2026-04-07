@@ -177,7 +177,7 @@ If you want to branch from `main` but only allow mutations on personal feature b
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
     allowed_branch_patterns:
-      - "^dm/.*$"
+      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
 ```
 
@@ -187,7 +187,7 @@ If you want to allow only personal feature branches:
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
     allowed_branch_patterns:
-      - "^dm/.*$"
+      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
 ```
 
