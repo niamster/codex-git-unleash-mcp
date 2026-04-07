@@ -71,11 +71,12 @@ Notes:
 The intended happy path is:
 
 1. Call `git_repo_policy` or `git_status` to inspect the allowlisted repository.
-2. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch.
-3. Call `git_add` with explicit repository-relative paths.
-4. Call `git_commit` with a normal commit message.
-5. Call `git_push` to push the current branch to the resolved remote.
-6. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
+2. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
+3. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch.
+4. Call `git_add` with explicit repository-relative paths.
+5. Call `git_commit` with a normal commit message.
+6. Call `git_push` to push the current branch to the resolved remote.
+7. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
 
 Each step stays inside a fixed policy boundary. There is no arbitrary checkout, no arbitrary push refspec, no amend flow, and no non-draft PR creation.
 
