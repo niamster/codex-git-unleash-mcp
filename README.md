@@ -109,7 +109,7 @@ npm test
 
 ## Register In Codex
 
-Use the wrapper script so the MCP server can inherit or reconstruct the SSH agent socket needed for SSH-signed commits:
+Register the MCP server with the wrapper script:
 
 ```bash
 codex mcp add git_unleash -- ~/projects/codex-git-unleash-mcp/scripts/run-mcp.sh ~/.config/codex-git-unleash-mcp.yaml
@@ -120,6 +120,15 @@ Then verify:
 ```bash
 codex mcp list
 ```
+
+### The Purpose Of The Wrapper Script
+
+The wrapper is there so the MCP server can inherit or reconstruct the SSH agent socket when Git operations need it.
+
+This matters in two common cases:
+
+- `git_commit` when Git is configured for SSH-based commit signing
+- `git_fetch` and `git_push` when the repository remote uses SSH authentication
 
 If your shell already has a working `SSH_AUTH_SOCK`, start Codex from that shell so the MCP server inherits it.
 
@@ -135,7 +144,7 @@ or:
 export SSH_AUTH_SOCK=/path/to/ssh-agent.sock
 ```
 
-The wrapper will also try `launchctl getenv SSH_AUTH_SOCK` on macOS before failing.
+On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before failing.
 
 ## What Codex Can Do Through This MCP Server
 
