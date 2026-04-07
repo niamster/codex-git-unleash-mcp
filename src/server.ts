@@ -11,6 +11,7 @@ import { ghPrCreateDraft } from "./tools/ghPrCreateDraft.js";
 import { gitCommit } from "./tools/gitCommit.js";
 import { gitFetch } from "./tools/gitFetch.js";
 import { gitPush } from "./tools/gitPush.js";
+import { getGitRepoPolicy } from "./tools/gitRepoPolicy.js";
 import { getGitStatus } from "./tools/gitStatus.js";
 
 export function createServer(config: Config): McpServer {
@@ -18,6 +19,27 @@ export function createServer(config: Config): McpServer {
     name: "codex-git-unleash-mcp",
     version: "0.1.0",
   });
+
+  server.tool(
+    "git_repo_policy",
+    "Return the configured policy for an allowlisted repository. This tool is read-only and exposes the branch patterns and related repository defaults that other tools enforce.",
+    {
+      repo_path: z.string().min(1),
+    },
+    async ({ repo_path }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      const result = getGitRepoPolicy(repo);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
 
   server.tool(
     "git_status",
