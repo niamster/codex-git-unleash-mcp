@@ -8,7 +8,7 @@ import type { RepoPolicy } from "../src/types/config.js";
 export async function createTempGitRepo(): Promise<{ repoDir: string; repo: RepoPolicy }> {
   const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-repo-"));
 
-  await runCommand({ cwd: repoDir, command: "git", argv: ["init"] });
+  await runCommand({ cwd: repoDir, command: "git", argv: ["init", "--initial-branch=main"] });
   await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.name", "Codex Test"] });
   await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.email", "codex@example.com"] });
 
