@@ -26,25 +26,11 @@ Codex should call a fixed set of MCP tools with structured inputs. The server sh
 
 The server should not accept raw command strings, arbitrary argument arrays, or shell fragments.
 
-## Tool Surface
+## Core Design Principle
 
-The initial tool surface should be fixed and explicit.
+The server should expose a fixed, structured set of repository and GitHub workflow operations.
 
-### Git tools
-
-- `git_repo_policy`
-- `git_status`
-- `git_add`
-- `git_commit`
-- `git_push`
-- `git_branch_create_and_switch`
-- `git_branch_switch`
-
-### GitHub tools
-
-- `gh_pr_create_draft`
-
-Read-only GitHub helpers may be added later if they are useful, but they should also be fixed structured tools rather than generic `gh` passthrough.
+It should not expose raw command execution, generic `git` passthrough, or generic `gh` passthrough. Exact tool names and shapes are an implementation detail and may evolve, but the server must remain narrow, explicit, and policy-driven.
 
 ## Repository Authorization Model
 
@@ -52,14 +38,16 @@ The server must be configurable with an allowlist of repositories.
 
 Each allowed repository must define:
 
-- canonical repository path
+- repository path
 - list of allowed branch patterns
 
 Repository authorization rules:
 
-- the requested repository must resolve to a configured canonical path
+- the requested repository must resolve to an allowlisted repository
 - symlink or path-traversal tricks must not allow escaping the configured repository
 - operations must execute only inside an allowed repository
+
+Initial implementations may enforce this by canonicalizing paths and requiring an exact match to a configured repository root, but the safety requirement is repository scoping, not a particular path-matching strategy.
 
 ## Branch Authorization Model
 
@@ -68,7 +56,7 @@ Each allowed repository must define a list of regex patterns for allowed branche
 Branch matching rules:
 
 - patterns are matched against the full current branch name
-- patterns should be treated as full-match expressions, not substring matches
+- implementations should enforce full-match semantics rather than substring matching
 - the current branch must match at least one configured pattern before any mutating operation is allowed
 
 At minimum, mutating operations include:
@@ -119,120 +107,17 @@ The server must reject any attempt to perform operations outside the fixed tool 
 
 If a requested behavior is not explicitly supported, the default result should be denial.
 
-## Tool Requirements
+## Allowed Operation Categories
 
-### `git_status`
+The server may expose structured tools for operations such as:
 
-Purpose:
+- repository inspection and policy inspection
+- constrained staging and commit creation
+- constrained branch creation and branch switching
+- constrained remote synchronization
+- constrained GitHub pull request creation
 
-- show repository state for an allowed repository
-
-Requirements:
-
-- repository must be allowlisted
-- no mutation
-- output should be structured where practical, or at least normalized for MCP consumption
-
-### `git_repo_policy`
-
-Purpose:
-
-- show the configured policy for an allowed repository
-
-Requirements:
-
-- repository must be allowlisted
-- no mutation
-- output should include the configured allowed branch patterns and related repository defaults in a structured shape suitable for MCP consumers
-
-### `git_add`
-
-Purpose:
-
-- stage a constrained list of paths
-
-Requirements:
-
-- repository must be allowlisted
-- current branch must match an allowed full-match pattern
-- every requested path must resolve inside the allowed repository
-- the server must not accept pathspec features that expand scope unexpectedly unless deliberately supported
-
-### `git_commit`
-
-Purpose:
-
-- create a normal commit on the current branch
-
-Requirements:
-
-- repository must be allowlisted
-- current branch must match an allowed full-match pattern
-- commit message must be provided as structured input
-- amend must not be supported
-- extra arbitrary commit flags must not be supported
-
-### `git_push`
-
-Purpose:
-
-- push the current branch to GitHub in a constrained way
-
-Requirements:
-
-- repository must be allowlisted
-- current branch must match an allowed full-match pattern
-- push target must be constrained by configuration or fixed defaults
-- no force push
-- no arbitrary refspec push
-- no pushing unrelated branches
-
-### `git_branch_create_and_switch`
-
-Purpose:
-
-- create a new local branch from the inferred upstream base branch and switch to it
-
-Requirements:
-
-- repository must be allowlisted
-- the worktree must be clean
-- the requested `new_branch` name must match an allowed full-match pattern for the repository
-- the tool must infer the remote at runtime, preferring the current branch remote, then `origin`, with configuration override allowed
-- the tool may accept an explicit plain branch name as the upstream base branch
-- when no base branch is provided, the tool must infer the base branch from the remote HEAD first, with GitHub default-branch lookup as a fallback
-- the tool must fetch the detected base branch before creating the branch
-- the new branch name must be provided as structured input
-- the tool must switch to the new local branch after creating it
-- the tool must not accept arbitrary source refs or checkout-like behavior
-
-### `git_branch_switch`
-
-Purpose:
-
-- switch to an existing local branch in a tightly constrained way
-
-Requirements:
-
-- repository must be allowlisted
-- the worktree must be clean
-- the target branch name must be provided explicitly
-- the target branch must already exist locally
-- the tool must not create branches, switch to arbitrary refs, or allow detached checkout
-
-### `gh_pr_create_draft`
-
-Purpose:
-
-- create a draft pull request for the current branch
-
-Requirements:
-
-- repository must be allowlisted
-- current branch must match an allowed full-match pattern
-- PR creation must be draft-only in the initial version
-- title and body must be structured inputs
-- target base branch should be constrained by configuration or explicit validated input
+Each supported operation must be explicitly designed and validated. New operations should be added only when they fit the same narrow policy boundary.
 
 ## Execution Model
 
