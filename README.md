@@ -12,6 +12,7 @@ For the suggested repository workflow used in this repo (and in general), see [A
 
 Current tool surface:
 
+- `git_repo_policy`
 - `git_status`
 - `git_add`
 - `git_commit`
@@ -56,9 +57,11 @@ Notes:
 
 - `path` must be an absolute path or start with `~/`
 - branch patterns are full-match regexes against the current branch name
+- `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted and fetches from the resolved remote
-- `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree but do not require the current branch to match `allowed_branch_patterns`
+- `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
+- `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
 - branch creation and PR base resolution prefer the remote HEAD branch and fall back to GitHub default-branch detection when needed
 - `git_status` only requires the repository to be allowlisted
@@ -67,7 +70,7 @@ Notes:
 
 The intended happy path is:
 
-1. Call `git_status` to inspect the allowlisted repository.
+1. Call `git_repo_policy` or `git_status` to inspect the allowlisted repository.
 2. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch.
 3. Call `git_add` with explicit repository-relative paths.
 4. Call `git_commit` with a normal commit message.
@@ -137,6 +140,7 @@ The wrapper will also try `launchctl getenv SSH_AUTH_SOCK` on macOS before faili
 
 Once registered, Codex should be able to use:
 
+- `git_repo_policy` to inspect the configured branch patterns and related defaults for an allowlisted repository
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository
 - `git_commit` with a normal commit message on an allowed branch
@@ -148,9 +152,11 @@ Once registered, Codex should be able to use:
 
 Current behavior:
 
+- `git_repo_policy` returns the configured path, canonical path, allowed branch patterns, default remote, and draft-PR setting for an allowlisted repository
 - `git_add` rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` rejects empty commit messages
 - `git_commit` rejects empty commits
+- `git_branch_create_and_switch` rejects requested branch names that do not match the configured allowed branch patterns
 - `git_branch_create_and_switch` resolves the remote at runtime, uses the explicit base branch when provided or detects one otherwise, fetches that base, creates the local branch, and switches to it
 - `git_branch_switch` only switches to an explicit existing local branch and rejects dirty worktrees
 - `git_fetch` only fetches `git fetch <resolved-remote> <branch>` and defaults the branch to `main`

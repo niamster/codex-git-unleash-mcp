@@ -14,8 +14,19 @@ export class RepoNotAllowedError extends Error {
 
 export class BranchNotAllowedError extends Error {
   constructor(branch: string, repoPath: string) {
-    super(`branch '${branch}' does not match allowed patterns for repository '${repoPath}'`);
+    super(
+      `branch '${branch}' does not match allowed patterns for repository '${repoPath}'; call 'git_repo_policy' to inspect the allowed branch patterns for this repository`,
+    );
     this.name = "BranchNotAllowedError";
+  }
+}
+
+export class BranchNameNotAllowedError extends Error {
+  constructor(branch: string, repoPath: string) {
+    super(
+      `requested branch '${branch}' does not match allowed patterns for repository '${repoPath}'; call 'git_repo_policy' to inspect the allowed branch patterns for this repository`,
+    );
+    this.name = "BranchNameNotAllowedError";
   }
 }
 
