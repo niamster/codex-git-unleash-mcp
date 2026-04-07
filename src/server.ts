@@ -155,7 +155,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_fetch",
-    "Fetch a plain branch name from the detected remote for an allowlisted repository. This tool refreshes remote-tracking refs, defaults to 'main' when no branch is provided, and does not allow arbitrary fetch arguments or refspecs.",
+    "Fetch a plain branch name from the detected remote for an allowlisted repository. This tool refreshes remote-tracking refs, accepts an explicit branch when provided, otherwise detects the repository base branch at runtime, and does not allow arbitrary fetch arguments or refspecs.",
     {
       repo_path: z.string().min(1),
       branch: z.string().optional(),
