@@ -114,18 +114,7 @@ repositories:
 
 Recommended TypeScript shape:
 
-```ts
-type RepoPolicy = {
-  path: string;
-  allowed_branch_patterns: string[];
-  default_remote?: string;
-  allow_draft_prs?: boolean;
-};
-
-type Config = {
-  repositories: RepoPolicy[];
-};
-```
+The internal TypeScript types can evolve with the codebase. The important design point is that configuration captures repository policy, not arbitrary command input.
 
 Validation rules:
 
@@ -141,7 +130,7 @@ Each tool should follow the same top-level policy order:
 
 1. Parse and validate tool input shape.
 2. Resolve the requested repository path.
-3. Canonicalize the repository path and match it to a configured repository.
+3. Canonicalize or otherwise normalize the repository path and match it to a configured repository according to the active repository-authorization model.
 4. Verify the repository looks like a Git repository.
 5. If the tool is read-only and policy-oriented, return the configured repository policy.
 6. If the tool mutates content history or remote state, read the current branch and validate it against full-match branch regexes when applicable.
@@ -154,14 +143,14 @@ This shared order matters because it keeps error behavior predictable.
 
 ## Repository Authorization
 
-Repository authorization should operate on canonical real paths.
+Repository authorization should operate on normalized repository identity, with canonical real paths as the initial implementation strategy.
 
 Implementation requirements:
 
 - resolve user-provided repository path to an absolute path
 - canonicalize via realpath before comparison
-- compare only against configured canonical paths
-- reject any path that does not map exactly to an allowed repository
+- compare only against configured allowlisted repositories
+- reject any path that does not map to an allowed repository under the chosen authorization strategy
 
 This prevents path aliasing and symlink escapes from widening access.
 
@@ -214,22 +203,6 @@ Requirements:
 
 The command runner should be generic enough to reuse, but narrow enough that call sites remain explicit.
 
-Suggested runner interface:
-
-```ts
-type RunResult = {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-};
-
-async function runCommand(args: {
-  cwd: string;
-  command: string;
-  argv: string[];
-}): Promise<RunResult>;
-```
-
 ## Git Command Builders
 
 Git behavior should be centralized in helper functions that build fixed argv arrays.
@@ -264,47 +237,26 @@ Constraints:
 
 ### `git_status`
 
-Suggested input:
-
-```ts
-type GitStatusInput = {
-  repo_path: string;
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 
 Execution:
 
 - run a fixed Git status command in the repository
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitStatusOutput = {
-  branch: string | null;
-  is_clean: boolean;
-  stdout: string;
-};
-```
-
-Initial version can expose normalized raw status output plus basic parsed fields.
+- return normalized repository status information
+- include the current branch when it can be determined
+- include enough raw status detail for MCP consumers to understand the working tree state
 
 ### `git_add`
 
-Suggested input:
-
-```ts
-type GitAddInput = {
-  repo_path: string;
-  paths: string[];
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 - current branch must be authorized
 - each path must pass repository-relative path validation
@@ -314,27 +266,15 @@ Execution:
 
 - run a fixed `git add` command for the validated paths
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitAddOutput = {
-  added_paths: string[];
-};
-```
+- return the validated paths that were staged
 
 ### `git_commit`
 
-Suggested input:
-
-```ts
-type GitCommitInput = {
-  repo_path: string;
-  message: string;
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 - current branch must be authorized
 - message must be non-empty after trimming
@@ -345,71 +285,53 @@ Execution:
 
 - run a fixed commit command with the message passed as a normal argument, not shell-interpolated text
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitCommitOutput = {
-  commit_oid: string;
-  summary: string;
-};
-```
+- after commit succeeds, return the created commit OID and summary via a fixed follow-up Git read
 
-Implementation note:
-
-After commit succeeds, run a fixed follow-up command to read back the created commit OID and summary.
-
-### `git_push`
-
-Suggested input:
-
-```ts
-type GitPushInput = {
-  repo_path: string;
-  remote?: string;
-};
-```
+### `git_fetch`
 
 Validation:
 
+- repository path is required
+- repository must be allowlisted
+- if a branch is provided, it must be a plain validated branch name
+- if no branch is provided, use a constrained default-resolution strategy rather than arbitrary caller-controlled input
+
+Execution:
+
+- fetch a single branch from the resolved remote
+- do not allow arbitrary fetch flags or refspecs
+
+Output guidance:
+
+- return the resolved remote and the fetched branch
+
+### `git_push`
+
+Validation:
+
+- repository path is required
 - repository must be allowlisted
 - current branch must be authorized
-- remote must be either omitted or equal to the configured allowed remote
 - detached HEAD is rejected
 
 Execution:
 
 - push only the current branch
-- use configured or default remote
+- resolve the remote from configuration or constrained runtime defaults
 - do not allow arbitrary refspecs
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitPushOutput = {
-  remote: string;
-  branch: string;
-  stdout: string;
-};
-```
-
-Implementation recommendation:
-
-Push the current branch to the same-named remote branch only. Keep this simple in v1.
+- return the resolved remote and branch
+- push the current branch to the same-named remote branch only in the initial version
 
 ### `git_branch_create_and_switch`
 
-Suggested input:
-
-```ts
-type GitBranchCreateAndSwitchInput = {
-  repo_path: string;
-  new_branch: string;
-  branch?: string;
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 - worktree must be clean
 - `new_branch` must be non-empty after trimming
@@ -425,29 +347,15 @@ Execution:
 - create a new local branch from `refs/remotes/<remote>/<base>`
 - switch to the new branch after creating it
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitBranchCreateAndSwitchOutput = {
-  branch: string;
-  remote: string;
-  base: string;
-};
-```
+- return the created branch, resolved remote, and resolved base branch
 
 ### `git_branch_switch`
 
-Suggested input:
-
-```ts
-type GitBranchSwitchInput = {
-  repo_path: string;
-  branch: string;
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 - worktree must be clean
 - `branch` must be non-empty after trimming
@@ -458,29 +366,15 @@ Execution:
 
 - switch to the explicit local branch
 
-Suggested output:
+Output guidance:
 
-```ts
-type GitBranchSwitchOutput = {
-  branch: string;
-};
-```
+- return the branch that was switched to
 
 ### `gh_pr_create_draft`
 
-Suggested input:
-
-```ts
-type GhPrCreateDraftInput = {
-  repo_path: string;
-  title: string;
-  body: string;
-  base?: string;
-};
-```
-
 Validation:
 
+- repository path is required
 - repository must be allowlisted
 - current branch must be authorized
 - draft PRs must be enabled for the repository
@@ -493,19 +387,9 @@ Execution:
 - create a draft PR for the current branch using `gh`
 - use the explicit `base` input when provided, otherwise use the inferred default base
 
-Suggested output:
+Output guidance:
 
-```ts
-type GhPrCreateDraftOutput = {
-  url: string;
-  base: string;
-  head: string;
-};
-```
-
-Implementation note:
-
-The handler should parse the resulting URL from `gh` output and return it as a structured field.
+- parse the resulting PR URL from `gh` output and return it with the resolved base and head branch
 
 ## Error Model
 
