@@ -50,6 +50,7 @@ Example:
 defaults:
   allowed_branch_patterns:
     - "^main$"
+  feature_branch_pattern: "dm/<feature-name>"
   allow_draft_prs: true
   branching_policy: worktree
 
@@ -63,23 +64,25 @@ repositories:
     branching_policy: current_branch
     allowed_branch_patterns:
       - "^feature/[a-z0-9._-]+$"
+    feature_branch_pattern: "feature/<feature-name>"
     allow_draft_prs: false
 ```
 
 Notes:
 
 - `path` must be an absolute path or start with `~/`
-- top-level `defaults` are optional and may define `allowed_branch_patterns`, `default_remote`, `allow_draft_prs`, and `branching_policy`
+- top-level `defaults` are optional and may define `allowed_branch_patterns`, `feature_branch_pattern`, `default_remote`, `allow_draft_prs`, and `branching_policy`
 - top-level `always_allowed_branch_patterns` are optional and are appended to every repository's effective branch policy
 - repository values override top-level defaults field-by-field
 - `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
+- `feature_branch_pattern` is an optional suggested naming template for new feature branches; it is advisory metadata and does not grant permission to use a branch name that fails `allowed_branch_patterns`
 - `branching_policy` is optional and enforced for branch-setup tools; supported values are `worktree`, `branch`, and `current_branch`
 - `worktree` means the preferred setup flow is `git_worktree_add`
 - `branch` means the preferred setup flow is `git_branch_create_and_switch`
 - `current_branch` means do not create a new worktree or feature branch; work directly on the current allowed branch
 - branch patterns are full-match regexes against the current branch name
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry, inherited `defaults`, or `always_allowed_branch_patterns`
-- `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository, including `branching_policy` when configured
+- `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository, including `feature_branch_pattern` and `branching_policy` when configured
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_worktree_add` requires an explicit absolute target path outside the repository root, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `branching_policy` is unset or `worktree`
@@ -174,7 +177,7 @@ On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before fail
 
 Once registered, Codex should be able to use:
 
-- `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, default remote, and draft-PR setting for an allowlisted repository
+- `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, suggested feature-branch pattern, default remote, and draft-PR setting for an allowlisted repository
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits

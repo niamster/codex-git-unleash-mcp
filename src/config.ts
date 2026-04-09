@@ -12,6 +12,7 @@ const branchingPolicySchema = z.enum(["worktree", "branch", "current_branch"]);
 
 const policyDefaultsSchema = z.object({
   allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
+  feature_branch_pattern: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
   branching_policy: branchingPolicySchema.optional(),
@@ -64,6 +65,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
       canonicalPath,
       worktreePath: canonicalPath,
       allowedBranchPatterns,
+      featureBranchPattern: repo.feature_branch_pattern ?? config.defaults?.feature_branch_pattern,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
       branchingPolicy: resolveBranchingPolicy(repo.branching_policy, config.defaults?.branching_policy),
