@@ -50,7 +50,7 @@ Example:
 defaults:
   allowed_branch_patterns:
     - "^main$"
-  feature_branch_pattern: "dm/<feature-name>"
+  feature_branch_pattern: "user/<feature-name>"
   allow_draft_prs: true
   branching_policy: worktree
 

@@ -47,7 +47,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
-        '  feature_branch_pattern: "dm/<feature-name>"',
+        '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policy: worktree",
@@ -60,7 +60,7 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
-    expect(config.repositories[0]?.featureBranchPattern).toBe("dm/<feature-name>");
+    expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
     expect(config.repositories[0]?.branchingPolicy).toBe("worktree");
@@ -103,7 +103,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
-        '  feature_branch_pattern: "dm/<feature-name>"',
+        '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policy: worktree",
