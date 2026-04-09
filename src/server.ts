@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { bootstrapConfig, upsertRepoConfig } from "./config.js";
 import type { Config } from "./types/config.js";
 import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
@@ -15,11 +16,106 @@ import { getGitRepoPolicy } from "./tools/gitRepoPolicy.js";
 import { getGitStatus } from "./tools/gitStatus.js";
 import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
-export function createServer(config: Config): McpServer {
+const branchingPoliciesSchema = z.array(z.enum(["worktree", "feature_branch", "current_branch"])).min(1);
+
+const configPolicyFields = {
+  allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
+  feature_branch_pattern: z.string().min(1).optional(),
+  git_worktree_base_path: z.string().min(1).optional(),
+  default_remote: z.string().min(1).optional(),
+  allow_draft_prs: z.boolean().optional(),
+  branching_policies: branchingPoliciesSchema.optional(),
+};
+
+export function getRegisteredToolNames(hasRuntimeConfig: boolean): string[] {
+  const configToolNames = ["config_bootstrap", "config_upsert_repo"];
+  if (!hasRuntimeConfig) {
+    return configToolNames;
+  }
+
+  return [
+    ...configToolNames,
+    "git_repo_policy",
+    "git_status",
+    "git_add",
+    "git_commit",
+    "git_branch_create_and_switch",
+    "git_branch_switch",
+    "git_fetch",
+    "git_worktree_add",
+    "git_push",
+    "gh_pr_create_draft",
+  ];
+}
+
+export function createServer(configPath: string, config?: Config): McpServer {
   const server = new McpServer({
     name: "codex-git-unleash-mcp",
     version: "0.1.0",
   });
+
+  server.tool(
+    "config_bootstrap",
+    "Create the initial MCP config file when it does not yet exist. This tool writes a minimal valid YAML config and does not apply changes to the current server process; restart the MCP server after use.",
+    {
+      ...configPolicyFields,
+      always_allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
+    },
+    async (input) => {
+      const nextConfig = await bootstrapConfig(configPath, input);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                configPath,
+                repositories: nextConfig.repositories.length,
+                restartRequired: true,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "config_upsert_repo",
+    "Add or update one repository entry in the MCP config file. This tool validates the resulting YAML against the existing schema and does not hot-reload the current server process; restart the MCP server after use.",
+    {
+      repo_path: z.string().min(1),
+      ...configPolicyFields,
+    },
+    async (input) => {
+      const result = await upsertRepoConfig(configPath, input);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                configPath,
+                action: result.action,
+                repo: result.repo,
+                restartRequired: true,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  if (!config) {
+    return server;
+  }
 
   server.tool(
     "git_repo_policy",
