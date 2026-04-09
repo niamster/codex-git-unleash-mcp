@@ -48,8 +48,11 @@ Example:
 ```yaml
 defaults:
   allowed_branch_patterns:
-    - "^user/.*$"
+    - "^main$"
   allow_draft_prs: true
+
+always_allowed_branch_patterns:
+  - "^user/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
@@ -64,9 +67,11 @@ Notes:
 
 - `path` must be an absolute path or start with `~/`
 - top-level `defaults` are optional and may define `allowed_branch_patterns`, `default_remote`, and `allow_draft_prs`
+- top-level `always_allowed_branch_patterns` are optional and are appended to every repository's effective branch policy
 - repository values override top-level defaults field-by-field
+- `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
 - branch patterns are full-match regexes against the current branch name
-- each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited from `defaults`
+- each repository must end up with at least one effective allowed branch pattern, either from the repo entry, inherited `defaults`, or `always_allowed_branch_patterns`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
@@ -189,7 +194,10 @@ If you want to branch from `main` but only allow mutations on personal feature b
 ```yaml
 defaults:
   allowed_branch_patterns:
-    - "^user/.*$"
+    - "^main$"
+
+always_allowed_branch_patterns:
+  - "^user/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp

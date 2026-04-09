@@ -44,7 +44,7 @@ describe("loadConfig", () => {
       [
         "defaults:",
         "  allowed_branch_patterns:",
-        '    - "^dm/.+$"',
+        '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "repositories:",
@@ -55,9 +55,35 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^dm\\/.+$"]);
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
+  });
+
+  it("appends always-allowed branch patterns to repository policy", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-patterns-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-patterns.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        'always_allowed_branch_patterns:',
+        '  - "^user/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^main$"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^main$",
+      "^user\\/.+$",
+    ]);
   });
 
   it("lets repositories override top-level defaults", async () => {
@@ -70,7 +96,7 @@ describe("loadConfig", () => {
       [
         "defaults:",
         "  allowed_branch_patterns:",
-        '    - "^dm/.+$"',
+        '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "repositories:",
@@ -90,6 +116,49 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
   });
 
+  it("appends always-allowed branch patterns to inherited defaults", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-defaults-plus-global-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-defaults-plus-global.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^main$"',
+        'always_allowed_branch_patterns:',
+        '  - "^user/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^main$",
+      "^user\\/.+$",
+    ]);
+  });
+
+  it("accepts repositories that only rely on always-allowed branch patterns", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-only-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-only.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      ['always_allowed_branch_patterns:', '  - "^user/.+$"', "repositories:", `  - path: ${repoDir}`].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+  });
+
   it("rejects repositories without effective branch patterns", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-no-patterns-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-no-patterns.yaml`);
@@ -98,7 +167,7 @@ describe("loadConfig", () => {
     await fs.writeFile(configPath, `repositories:\n  - path: ${repoDir}\n`, "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow(
-      `repository '${repoDir}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
+      `repository '${repoDir}' must define allowed_branch_patterns directly, inherit them from top-level defaults, or rely on always_allowed_branch_patterns`,
     );
   });
 

@@ -9,7 +9,7 @@ describe("getGitRepoPolicy", () => {
       path: "/tmp/repo",
       canonicalPath: "/private/tmp/repo",
       worktreePath: "/private/tmp/repo",
-      allowedBranchPatterns: [/^dm\/.*$/, /^feature\/[a-z0-9._-]+$/],
+      allowedBranchPatterns: [/^user\/.*$/, /^feature\/[a-z0-9._-]+$/],
       defaultRemote: "origin",
       allowDraftPrs: true,
     };
@@ -17,7 +17,7 @@ describe("getGitRepoPolicy", () => {
     expect(getGitRepoPolicy(repo)).toEqual({
       path: "/tmp/repo",
       canonicalPath: "/private/tmp/repo",
-      allowedBranchPatterns: ["^dm\\/.*$", "^feature\\/[a-z0-9._-]+$"],
+      allowedBranchPatterns: ["^user\\/.*$", "^feature\\/[a-z0-9._-]+$"],
       defaultRemote: "origin",
       allowDraftPrs: true,
     });
