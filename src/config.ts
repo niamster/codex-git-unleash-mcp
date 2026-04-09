@@ -6,12 +6,15 @@ import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
 import { ConfigError } from "./errors.js";
-import type { Config, RepoPolicy } from "./types/config.js";
+import type { BranchingPolicy, Config, RepoPolicy } from "./types/config.js";
+
+const branchingPolicySchema = z.enum(["worktree", "branch", "current_branch"]);
 
 const policyDefaultsSchema = z.object({
   allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
+  branching_policy: branchingPolicySchema.optional(),
 });
 
 const repoPolicySchema = policyDefaultsSchema.extend({
@@ -63,12 +66,20 @@ export async function loadConfig(configPath: string): Promise<Config> {
       allowedBranchPatterns,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
+      branchingPolicy: resolveBranchingPolicy(repo.branching_policy, config.defaults?.branching_policy),
     });
 
     seenPaths.add(canonicalPath);
   }
 
   return { repositories };
+}
+
+function resolveBranchingPolicy(
+  repoPolicy: BranchingPolicy | undefined,
+  defaultPolicy: BranchingPolicy | undefined,
+): BranchingPolicy | undefined {
+  return repoPolicy ?? defaultPolicy;
 }
 
 function expandHomeDir(inputPath: string): string {
