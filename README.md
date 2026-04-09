@@ -81,6 +81,7 @@ Notes:
 - `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
 - `feature_branch_pattern` is an optional suggested naming template for new feature branches; it is advisory metadata and does not grant permission to use a branch name that fails `allowed_branch_patterns`
 - `git_worktree_base_path` is inherited or overridden per repository and, when configured, constrains `git_worktree_add.path` to stay under that base
+- for Codex workflows, prefer a repo-specific in-repository worktree base such as `.worktrees/` when you want linked worktrees to stay under the same trusted project root; add that directory to `.gitignore`
 - `branching_policies` is optional and enforced for branch-setup tools; supported values are `worktree`, `feature_branch`, and `current_branch`
 - `worktree` means the preferred setup flow is `git_worktree_add`
 - `feature_branch` means the preferred setup flow is `git_branch_create_and_switch`
