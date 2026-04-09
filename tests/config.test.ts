@@ -31,8 +31,8 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
     expect(config.repositories[0]?.defaultRemote).toBeUndefined();
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
-    expect(config.repositories[0]?.branchingPolicy).toBeUndefined();
     expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
+    expect(config.repositories[0]?.branchingPolicies).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
   });
 
@@ -50,7 +50,8 @@ describe("loadConfig", () => {
         '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
-        "  branching_policy: worktree",
+        "  branching_policies:",
+        "    - worktree",
         "repositories:",
         `  - path: ${repoDir}`,
       ].join("\n"),
@@ -63,7 +64,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
-    expect(config.repositories[0]?.branchingPolicy).toBe("worktree");
+    expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
   });
 
   it("appends always-allowed branch patterns to repository policy", async () => {
@@ -106,7 +107,8 @@ describe("loadConfig", () => {
         '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
-        "  branching_policy: worktree",
+        "  branching_policies:",
+        "    - worktree",
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
@@ -114,7 +116,9 @@ describe("loadConfig", () => {
         '    feature_branch_pattern: "feature/<feature-name>"',
         "    default_remote: origin",
         "    allow_draft_prs: true",
-        "    branching_policy: current_branch",
+        "    branching_policies:",
+        "      - current_branch",
+        "      - feature_branch",
       ].join("\n"),
       "utf8",
     );
@@ -125,7 +129,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
     expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
-    expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
+    expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch", "feature_branch"]);
   });
 
   it("appends always-allowed branch patterns to inherited defaults", async () => {
@@ -219,7 +223,8 @@ describe("loadConfig", () => {
       [
         "repositories:",
         `  - path: ${repoDir}`,
-        "    branching_policy: current_branch",
+        "    branching_policies:",
+        "      - current_branch",
         "    allowed_branch_patterns:",
         '      - "^main$"',
       ].join("\n"),
@@ -228,6 +233,6 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
+    expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch"]);
   });
 });

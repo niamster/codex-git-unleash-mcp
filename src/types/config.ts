@@ -1,4 +1,4 @@
-export type BranchingPolicy = "worktree" | "branch" | "current_branch";
+export type BranchingPolicy = "worktree" | "feature_branch" | "current_branch";
 
 export type RepoPolicy = {
   path: string;
@@ -8,7 +8,7 @@ export type RepoPolicy = {
   featureBranchPattern?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
-  branchingPolicy?: BranchingPolicy;
+  branchingPolicies?: BranchingPolicy[];
 };
 
 export type Config = {

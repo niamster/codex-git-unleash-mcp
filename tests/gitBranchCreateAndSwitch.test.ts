@@ -133,7 +133,7 @@ describe("gitBranchCreateAndSwitch", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects branch creation when branching_policy requires worktree mode", async () => {
+  it("rejects branch creation when branching_policies excludes feature_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -141,14 +141,14 @@ describe("gitBranchCreateAndSwitch", () => {
       gitBranchCreateAndSwitch(
         {
           ...repo,
-          branchingPolicy: "worktree",
+          branchingPolicies: ["worktree"],
         },
         { newBranch: "feature/from-branch-tool" },
       ),
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("rejects branch creation when branching_policy requires current_branch", async () => {
+  it("rejects branch creation when branching_policies excludes feature_branch via current_branch-only mode", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -156,11 +156,42 @@ describe("gitBranchCreateAndSwitch", () => {
       gitBranchCreateAndSwitch(
         {
           ...repo,
-          branchingPolicy: "current_branch",
+          branchingPolicies: ["current_branch"],
         },
         { newBranch: "feature/from-current-branch" },
       ),
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("allows branch creation when branching_policies includes feature_branch among multiple strategies", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    tempPaths.push(repoDir, remoteDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitBranchCreateAndSwitch(
+      {
+        ...repo,
+        branchingPolicies: ["worktree", "feature_branch"],
+      },
+      { newBranch: "feature/multi-strategy" },
+    );
+
+    expect(result).toEqual({
+      branch: "feature/multi-strategy",
+      remote: "origin",
+      base: "main",
+    });
   });
 
   it("uses an explicit upstream branch when provided", async () => {

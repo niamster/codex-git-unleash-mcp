@@ -13,7 +13,7 @@ describe("getGitRepoPolicy", () => {
       featureBranchPattern: "user/<feature-name>",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicy: "current_branch",
+      branchingPolicies: ["current_branch", "feature_branch"],
     };
 
     expect(getGitRepoPolicy(repo)).toEqual({
@@ -23,7 +23,7 @@ describe("getGitRepoPolicy", () => {
       featureBranchPattern: "user/<feature-name>",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicy: "current_branch",
+      branchingPolicies: ["current_branch", "feature_branch"],
     });
   });
 });
