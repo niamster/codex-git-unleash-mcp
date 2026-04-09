@@ -30,6 +30,7 @@ describe("loadConfig", () => {
     expect(config.repositories).toHaveLength(1);
     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
     expect(config.repositories[0]?.defaultRemote).toBeUndefined();
+    expect(config.repositories[0]?.gitWorktreeBasePath).toBeUndefined();
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
     expect(config.repositories[0]?.branchingPolicy).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
@@ -46,6 +47,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
+        "  git_worktree_base_path: ~/git-worktrees",
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policy: worktree",
@@ -56,8 +58,10 @@ describe("loadConfig", () => {
     );
 
     const config = await loadConfig(configPath);
+    const expectedBasePath = path.join(os.homedir(), "git-worktrees");
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+    expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedBasePath);
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
     expect(config.repositories[0]?.branchingPolicy).toBe("worktree");
@@ -100,6 +104,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
+        "  git_worktree_base_path: /tmp/default-worktrees",
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policy: worktree",
@@ -107,6 +112,7 @@ describe("loadConfig", () => {
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
         '      - "^feature/.+$"',
+        "    git_worktree_base_path: /tmp/repo-worktrees",
         "    default_remote: origin",
         "    allow_draft_prs: true",
         "    branching_policy: current_branch",
@@ -117,6 +123,7 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
+    expect(config.repositories[0]?.gitWorktreeBasePath).toBe("/private/tmp/repo-worktrees");
     expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
     expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
@@ -223,5 +230,28 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
 
     expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
+  });
+
+  it("rejects relative git_worktree_base_path values", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-relative-worktree-base-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-relative-worktree-base.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  git_worktree_base_path: tmp/worktrees",
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^main$"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow(
+      "git_worktree_base_path 'tmp/worktrees' must be absolute or start with '~/'",
+    );
   });
 });

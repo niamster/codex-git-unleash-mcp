@@ -12,6 +12,7 @@ const branchingPolicySchema = z.enum(["worktree", "branch", "current_branch"]);
 
 const policyDefaultsSchema = z.object({
   allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
+  git_worktree_base_path: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
   branching_policy: branchingPolicySchema.optional(),
@@ -47,6 +48,10 @@ export async function loadConfig(configPath: string): Promise<Config> {
       throw new ConfigError(`duplicate configured repository path '${canonicalPath}'`);
     }
 
+    const gitWorktreeBasePath = await resolveGitWorktreeBasePath(
+      repo.git_worktree_base_path ?? config.defaults?.git_worktree_base_path,
+    );
+
     const repoPatternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns ?? [];
     const globalPatternSources = config.always_allowed_branch_patterns ?? [];
     const patternSources = [...repoPatternSources, ...globalPatternSources];
@@ -64,6 +69,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
       canonicalPath,
       worktreePath: canonicalPath,
       allowedBranchPatterns,
+      gitWorktreeBasePath,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
       branchingPolicy: resolveBranchingPolicy(repo.branching_policy, config.defaults?.branching_policy),
@@ -96,6 +102,39 @@ function expandHomeDir(inputPath: string): string {
   }
 
   return inputPath;
+}
+
+async function resolveGitWorktreeBasePath(inputPath: string | undefined): Promise<string | undefined> {
+  if (!inputPath) {
+    return undefined;
+  }
+
+  const expandedPath = expandHomeDir(inputPath);
+  if (!path.isAbsolute(expandedPath)) {
+    throw new ConfigError(`git_worktree_base_path '${inputPath}' must be absolute or start with '~/'`);
+  }
+
+  return await canonicalizeProspectivePath(expandedPath);
+}
+
+async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
+  const parts: string[] = [];
+  let currentPath = path.resolve(inputPath);
+
+  while (true) {
+    try {
+      const canonicalBase = await fs.realpath(currentPath);
+      return path.join(canonicalBase, ...parts.reverse());
+    } catch {
+      const parentPath = path.dirname(currentPath);
+      if (parentPath === currentPath) {
+        throw new ConfigError(`path '${inputPath}' could not be resolved`);
+      }
+
+      parts.push(path.basename(currentPath));
+      currentPath = parentPath;
+    }
+  }
 }
 
 function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {

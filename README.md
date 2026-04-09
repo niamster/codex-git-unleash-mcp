@@ -52,6 +52,7 @@ defaults:
     - "^main$"
   allow_draft_prs: true
   branching_policy: worktree
+  git_worktree_base_path: /tmp/git-worktrees
 
 always_allowed_branch_patterns:
   - "^user/.*$"
@@ -70,9 +71,11 @@ Notes:
 
 - `path` must be an absolute path or start with `~/`
 - top-level `defaults` are optional and may define `allowed_branch_patterns`, `default_remote`, `allow_draft_prs`, and `branching_policy`
+- top-level `defaults` may also define `git_worktree_base_path`, which constrains `git_worktree_add.path` to stay under that base when configured
 - top-level `always_allowed_branch_patterns` are optional and are appended to every repository's effective branch policy
 - repository values override top-level defaults field-by-field
 - `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
+- `git_worktree_base_path` is inherited or overridden per repository the same way as other defaults
 - `branching_policy` is optional and enforced for branch-setup tools; supported values are `worktree`, `branch`, and `current_branch`
 - `worktree` means the preferred setup flow is `git_worktree_add`
 - `branch` means the preferred setup flow is `git_branch_create_and_switch`
@@ -82,7 +85,8 @@ Notes:
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository, including `branching_policy` when configured
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
-- `git_worktree_add` requires an explicit absolute target path outside the repository root, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `branching_policy` is unset or `worktree`
+- `git_worktree_add` requires an explicit absolute target path, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `branching_policy` is unset or `worktree`
+- when `git_worktree_base_path` is configured, `git_worktree_add.path` must resolve under that base path
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
 - `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`, and is only allowed when `branching_policy` is unset or `branch`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
@@ -96,7 +100,7 @@ The intended happy path is:
 1. Call `git_repo_policy` or `git_status` to inspect the allowlisted repository.
 2. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
 3. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
-4. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path outside the repository root.
+4. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path.
 5. Call `git_add` with explicit repository-relative paths.
 6. Call `git_commit` with a normal commit message.
 7. Call `git_push` to push the current branch to the resolved remote.
@@ -179,7 +183,7 @@ Once registered, Codex should be able to use:
 - `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
 - `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and uses an explicit branch when provided or the detected base branch otherwise
-- `git_worktree_add` to create a linked worktree for a new allowed branch at an explicit absolute path outside the repository root; it fetches the explicit or detected base branch first and does not allow arbitrary refs
+- `git_worktree_add` to create a linked worktree for a new allowed branch at an explicit absolute path; it fetches the explicit or detected base branch first, does not allow arbitrary refs, and enforces `git_worktree_base_path` when configured
 - `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it; it rejects requested branch names that do not match the configured allowed branch patterns
 - `git_branch_switch` to switch to an existing local branch when the worktree is clean; it does not create branches or allow detached checkouts
 - `git_push` to push the current branch to the detected remote; it only pushes `HEAD` to `refs/heads/<current-branch>` and does not allow arbitrary refspecs or force-like behavior
