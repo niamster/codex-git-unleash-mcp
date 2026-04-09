@@ -30,6 +30,15 @@ export class BranchNameNotAllowedError extends Error {
   }
 }
 
+export class BranchingPolicyViolationError extends Error {
+  constructor(toolName: string, repoPath: string, actualPolicy: string) {
+    super(
+      `tool '${toolName}' is not allowed for repository '${repoPath}' under branching_policy '${actualPolicy}'; call 'git_repo_policy' and use the setup flow required by that policy`,
+    );
+    this.name = "BranchingPolicyViolationError";
+  }
+}
+
 export class DetachedHeadError extends Error {
   constructor(repoPath: string) {
     super(`repository '${repoPath}' is in detached HEAD state`);

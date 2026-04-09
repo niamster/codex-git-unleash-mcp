@@ -4,7 +4,12 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BranchAlreadyExistsError, BranchNameNotAllowedError, PathValidationError } from "../src/errors.js";
+import {
+  BranchAlreadyExistsError,
+  BranchNameNotAllowedError,
+  BranchingPolicyViolationError,
+  PathValidationError,
+} from "../src/errors.js";
 import { getCurrentBranch } from "../src/exec/git.js";
 import { runCommand } from "../src/exec/run.js";
 import { gitAdd } from "../src/tools/gitAdd.js";
@@ -117,6 +122,42 @@ describe("gitWorktreeAdd", () => {
         },
       ),
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
+  });
+
+  it("rejects worktree creation when branching_policy requires branch mode", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitWorktreeAdd(
+        {
+          ...repo,
+          branchingPolicy: "branch",
+        },
+        {
+          path: "/tmp/git-mcp-policy-mismatch-worktree",
+          newBranch: "feature/from-worktree",
+        },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects worktree creation when branching_policy requires current_branch", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitWorktreeAdd(
+        {
+          ...repo,
+          branchingPolicy: "current_branch",
+        },
+        {
+          path: "/tmp/git-mcp-current-branch-worktree",
+          newBranch: "feature/from-current-branch",
+        },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
   it("rejects duplicate local branch names", async () => {

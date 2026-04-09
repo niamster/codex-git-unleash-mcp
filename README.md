@@ -73,7 +73,7 @@ Notes:
 - top-level `always_allowed_branch_patterns` are optional and are appended to every repository's effective branch policy
 - repository values override top-level defaults field-by-field
 - `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
-- `branching_policy` is optional and advisory; supported values are `worktree`, `branch`, and `current_branch`
+- `branching_policy` is optional and enforced for branch-setup tools; supported values are `worktree`, `branch`, and `current_branch`
 - `worktree` means the preferred setup flow is `git_worktree_add`
 - `branch` means the preferred setup flow is `git_branch_create_and_switch`
 - `current_branch` means do not create a new worktree or feature branch; work directly on the current allowed branch
@@ -82,9 +82,9 @@ Notes:
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository, including `branching_policy` when configured
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
-- `git_worktree_add` requires an explicit absolute target path outside the repository root, validates the requested new branch name against `allowed_branch_patterns`, and creates a linked worktree from an explicit or detected upstream base branch
+- `git_worktree_add` requires an explicit absolute target path outside the repository root, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `branching_policy` is unset or `worktree`
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
-- `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`
+- `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`, and is only allowed when `branching_policy` is unset or `branch`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
 - branch creation and PR base resolution prefer the remote HEAD branch and fall back to GitHub default-branch detection when needed
 - `git_status` only requires the repository to be allowlisted
