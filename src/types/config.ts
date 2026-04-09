@@ -5,6 +5,7 @@ export type RepoPolicy = {
   canonicalPath: string;
   worktreePath: string;
   allowedBranchPatterns: RegExp[];
+  featureBranchPattern?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
   branchingPolicies?: BranchingPolicy[];

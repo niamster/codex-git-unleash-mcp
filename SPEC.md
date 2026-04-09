@@ -147,6 +147,7 @@ Optional configuration that may be useful:
 
 - default remote name
 - whether draft PR creation is enabled
+- suggested feature branch naming pattern
 - branching workflow policies (`worktree`, `feature_branch`, or `current_branch`) enforced for branch-setup tools
 
 The initial branch and PR behavior should prefer runtime inference with a narrow fallback order:

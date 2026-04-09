@@ -31,6 +31,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
     expect(config.repositories[0]?.defaultRemote).toBeUndefined();
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
+    expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
     expect(config.repositories[0]?.branchingPolicies).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
   });
@@ -46,6 +47,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
+        '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policies:",
@@ -59,6 +61,7 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+    expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
@@ -101,6 +104,7 @@ describe("loadConfig", () => {
         "defaults:",
         "  allowed_branch_patterns:",
         '    - "^user/.+$"',
+        '  feature_branch_pattern: "user/<feature-name>"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "  branching_policies:",
@@ -109,6 +113,7 @@ describe("loadConfig", () => {
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
         '      - "^feature/.+$"',
+        '    feature_branch_pattern: "feature/<feature-name>"',
         "    default_remote: origin",
         "    allow_draft_prs: true",
         "    branching_policies:",
@@ -121,6 +126,7 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
+    expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
     expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch", "feature_branch"]);
