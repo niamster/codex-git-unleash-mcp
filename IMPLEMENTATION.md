@@ -60,6 +60,7 @@ src/
     gitAdd.ts
     gitCommit.ts
     gitFetch.ts
+    gitWorktreeAdd.ts
     gitPush.ts
     gitBranchCreateAndSwitch.ts
     gitBranchSwitch.ts
@@ -327,6 +328,30 @@ Output guidance:
 - return the resolved remote and branch
 - push the current branch to the same-named remote branch only in the initial version
 
+### `git_worktree_add`
+
+Validation:
+
+- repository path is required
+- repository must be allowlisted
+- `path` must be a non-empty absolute path outside the repository root
+- `new_branch` must be non-empty after trimming
+- `new_branch` must match at least one configured allowed branch pattern
+- `new_branch` must not already exist locally
+- resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
+- if `branch` is provided, treat it as the upstream base branch name
+- otherwise resolve the base branch from remote HEAD first, with GitHub default-branch lookup as a fallback
+
+Execution:
+
+- fetch the upstream base branch from the detected remote
+- create a linked worktree at the validated absolute path
+- create and check out the new local branch there from `refs/remotes/<remote>/<base>`
+
+Output guidance:
+
+- return the created branch, resolved remote, resolved base branch, and resolved worktree path
+
 ### `git_branch_create_and_switch`
 
 Validation:
@@ -466,6 +491,7 @@ Cover:
 - `git_add` path escaping denied
 - successful add and commit
 - empty commit denied
+- successful linked worktree creation from fetched upstream base
 - successful branch creation and switch from fetched upstream base
 - duplicate branch creation denied
 - clean-worktree branch switch succeeds
@@ -492,6 +518,7 @@ Live GitHub integration tests can be deferred until later.
 - `git_add`
 - `git_commit`
 - `git_fetch`
+- `git_worktree_add`
 - `git_push`
 - `git_branch_create_and_switch`
 - `git_branch_switch`

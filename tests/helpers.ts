@@ -9,8 +9,7 @@ export async function createTempGitRepo(): Promise<{ repoDir: string; repo: Repo
   const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-repo-"));
 
   await runCommand({ cwd: repoDir, command: "git", argv: ["init", "--initial-branch=main"] });
-  await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.name", "Codex Test"] });
-  await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.email", "codex@example.com"] });
+  await configureTestGitRepo(repoDir);
 
   return {
     repoDir,
@@ -28,6 +27,12 @@ export async function createTempBareGitRepo(): Promise<string> {
   const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-remote-"));
   await runCommand({ cwd: repoDir, command: "git", argv: ["init", "--bare"] });
   return repoDir;
+}
+
+export async function configureTestGitRepo(repoDir: string): Promise<void> {
+  await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.name", "Codex Test"] });
+  await runCommand({ cwd: repoDir, command: "git", argv: ["config", "user.email", "codex@example.com"] });
+  await runCommand({ cwd: repoDir, command: "git", argv: ["config", "commit.gpgsign", "false"] });
 }
 
 export async function createLinkedWorktree(repoDir: string, worktreeDir: string): Promise<string> {

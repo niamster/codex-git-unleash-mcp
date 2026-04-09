@@ -26,6 +26,10 @@ export function gitCreateBranchArgs(newBranch: string, startPoint: string): stri
   return ["branch", newBranch, startPoint];
 }
 
+export function gitWorktreeAddArgs(worktreePath: string, newBranch: string, startPoint: string): string[] {
+  return ["worktree", "add", "-b", newBranch, worktreePath, startPoint];
+}
+
 export function gitSwitchBranchArgs(branch: string): string[] {
   return ["checkout", branch];
 }
@@ -129,6 +133,19 @@ export async function createBranch(cwd: string, newBranch: string, startPoint: s
     cwd,
     command: "git",
     argv: gitCreateBranchArgs(newBranch, startPoint),
+  });
+}
+
+export async function addWorktree(
+  cwd: string,
+  worktreePath: string,
+  newBranch: string,
+  startPoint: string,
+): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitWorktreeAddArgs(worktreePath, newBranch, startPoint),
   });
 }
 
