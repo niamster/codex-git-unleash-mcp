@@ -5,6 +5,7 @@ export type GitRepoPolicyResult = {
   canonicalPath: string;
   allowedBranchPatterns: string[];
   featureBranchPattern?: string;
+  gitWorktreeBasePath?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
   branchingPolicies?: string[];
@@ -16,6 +17,7 @@ export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
     canonicalPath: repo.canonicalPath,
     allowedBranchPatterns: repo.allowedBranchPatterns.map((pattern) => pattern.source),
     featureBranchPattern: repo.featureBranchPattern,
+    gitWorktreeBasePath: repo.gitWorktreeBasePath,
     defaultRemote: repo.defaultRemote,
     allowDraftPrs: repo.allowDraftPrs,
     branchingPolicies: repo.branchingPolicies,

@@ -11,7 +11,7 @@ export function validateRepoRelativePaths(repoRoot: string, inputPaths: string[]
   return inputPaths.map((inputPath) => validateRepoRelativePath(repoRoot, inputPath));
 }
 
-export async function validateWorktreePath(repoRoot: string, inputPath: string): Promise<string> {
+export async function validateWorktreePath(inputPath: string): Promise<string> {
   if (!inputPath.trim()) {
     throw new PathValidationError("worktree path must be non-empty");
   }
@@ -20,16 +20,32 @@ export async function validateWorktreePath(repoRoot: string, inputPath: string):
     throw new PathValidationError(`worktree path '${inputPath}' must be absolute`);
   }
 
-  const canonicalRepoRoot = await fs.realpath(repoRoot);
   const resolvedPath = path.resolve(inputPath);
   const canonicalWorktreePath = await canonicalizeProspectivePath(resolvedPath);
-  const relativeToRoot = path.relative(canonicalRepoRoot, canonicalWorktreePath);
+
+  return canonicalWorktreePath;
+}
+
+export async function validateWorktreePathAgainstBasePath(
+  inputPath: string,
+  basePath: string | undefined,
+): Promise<string> {
+  const canonicalWorktreePath = await validateWorktreePath(inputPath);
+
+  if (!basePath) {
+    return canonicalWorktreePath;
+  }
+
+  const canonicalBasePath = await canonicalizeProspectivePath(path.resolve(basePath));
+  const relativeToBase = path.relative(canonicalBasePath, canonicalWorktreePath);
   if (
-    relativeToRoot === "" ||
-    relativeToRoot === "." ||
-    (!relativeToRoot.startsWith(`..${path.sep}`) && relativeToRoot !== ".." && !path.isAbsolute(relativeToRoot))
+    relativeToBase === ".." ||
+    relativeToBase.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToBase)
   ) {
-    throw new PathValidationError(`worktree path '${inputPath}' must be outside the repository root`);
+    throw new PathValidationError(
+      `worktree path '${inputPath}' must be inside configured git_worktree_base_path '${basePath}'`,
+    );
   }
 
   return canonicalWorktreePath;

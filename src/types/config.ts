@@ -6,6 +6,7 @@ export type RepoPolicy = {
   worktreePath: string;
   allowedBranchPatterns: RegExp[];
   featureBranchPattern?: string;
+  gitWorktreeBasePath?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
   branchingPolicies?: BranchingPolicy[];

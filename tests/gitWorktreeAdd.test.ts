@@ -229,15 +229,60 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchAlreadyExistsError);
   });
 
-  it("rejects worktree paths inside the repository root", async () => {
+  it("allows worktree paths inside the repository root when no base path is configured", async () => {
     const { repoDir, repo } = await createTempGitRepo();
-    tempPaths.push(repoDir);
+    const remoteDir = await createTempBareGitRepo();
+    tempPaths.push(repoDir, remoteDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitWorktreeAdd(repo, {
+      path: path.join(repoDir, "nested-worktree"),
+      newBranch: "feature/inside-repo",
+    });
+
+    await expect(getCurrentBranch(result.path)).resolves.toBe("feature/inside-repo");
+  });
+
+  it("rejects worktree paths outside the configured base path", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeBaseParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-base-parent-"));
+    const worktreeBaseDir = path.join(worktreeBaseParentDir, "base");
+    await fs.mkdir(worktreeBaseDir);
+    tempPaths.push(repoDir, remoteDir, worktreeBaseParentDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
 
     await expect(
-      gitWorktreeAdd(repo, {
-        path: path.join(repoDir, "nested-worktree"),
-        newBranch: "feature/inside-repo",
-      }),
+      gitWorktreeAdd(
+        {
+          ...repo,
+          gitWorktreeBasePath: await fs.realpath(worktreeBaseDir),
+        },
+        {
+          path: path.join(worktreeBaseParentDir, "outside"),
+          newBranch: "feature/outside-base",
+        },
+      ),
     ).rejects.toBeInstanceOf(PathValidationError);
   });
 });

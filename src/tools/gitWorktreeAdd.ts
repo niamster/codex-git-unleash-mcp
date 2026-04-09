@@ -1,6 +1,6 @@
 import { requireAllowedBranchName } from "../auth/branchAuth.js";
 import { requireBranchingPolicy } from "../auth/branchingPolicy.js";
-import { validateWorktreePath } from "../auth/pathValidation.js";
+import { validateWorktreePathAgainstBasePath } from "../auth/pathValidation.js";
 import { BranchAlreadyExistsError, EmptyBranchNameError } from "../errors.js";
 import { addWorktree, branchExists, fetchBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
@@ -28,7 +28,7 @@ export async function gitWorktreeAdd(
     throw new BranchAlreadyExistsError(normalizedBranch, repo.worktreePath);
   }
 
-  const worktreePath = await validateWorktreePath(repo.canonicalPath, input.path);
+  const worktreePath = await validateWorktreePathAgainstBasePath(input.path, repo.gitWorktreeBasePath);
   const remote = await resolveRepoRemote(repo);
   const base = input.branch?.trim() || (await resolveRepoBaseBranch(repo, remote));
 

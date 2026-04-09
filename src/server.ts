@@ -178,7 +178,7 @@ export function createServer(config: Config): McpServer {
 
   server.tool(
     "git_worktree_add",
-    "Create a linked worktree at an explicit absolute path for a new local branch in an allowlisted repository. This tool mutates repository state, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and rejects worktree paths inside the repository root.",
+    "Create a linked worktree at an explicit absolute path for a new local branch in an allowlisted repository. This tool mutates repository state, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and enforces the configured worktree base path when one exists.",
     {
       repo_path: z.string().min(1),
       path: z.string().min(1),
