@@ -20,6 +20,7 @@ const repoPolicySchema = policyDefaultsSchema.extend({
 
 const configSchema = z.object({
   defaults: policyDefaultsSchema.optional(),
+  always_allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
   repositories: z.array(repoPolicySchema),
 });
 
@@ -43,10 +44,13 @@ export async function loadConfig(configPath: string): Promise<Config> {
       throw new ConfigError(`duplicate configured repository path '${canonicalPath}'`);
     }
 
-    const patternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns;
-    if (!patternSources || patternSources.length === 0) {
+    const repoPatternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns ?? [];
+    const globalPatternSources = config.always_allowed_branch_patterns ?? [];
+    const patternSources = [...repoPatternSources, ...globalPatternSources];
+
+    if (patternSources.length === 0) {
       throw new ConfigError(
-        `repository '${repo.path}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
+        `repository '${repo.path}' must define allowed_branch_patterns directly, inherit them from top-level defaults, or rely on always_allowed_branch_patterns`,
       );
     }
 
