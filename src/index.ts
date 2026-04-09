@@ -1,6 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { loadOptionalConfig } from "./config.js";
 import { createServer } from "./server.js";
 
 function getConfigPath(argv: string[]): string {
@@ -14,8 +13,7 @@ function getConfigPath(argv: string[]): string {
 
 async function main(): Promise<void> {
   const configPath = getConfigPath(process.argv);
-  const config = await loadOptionalConfig(configPath);
-  const server = createServer(configPath, config);
+  const server = createServer(configPath);
   const transport = new StdioServerTransport();
 
   await server.connect(transport);
