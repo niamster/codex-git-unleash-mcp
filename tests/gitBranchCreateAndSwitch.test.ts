@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   BranchAlreadyExistsError,
   BranchNameNotAllowedError,
+  BranchingPolicyViolationError,
   DirtyWorktreeError,
   EmptyBranchNameError,
 } from "../src/errors.js";
@@ -130,6 +131,36 @@ describe("gitBranchCreateAndSwitch", () => {
         { newBranch: "codex/disallowed" },
       ),
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
+  });
+
+  it("rejects branch creation when branching_policy requires worktree mode", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchCreateAndSwitch(
+        {
+          ...repo,
+          branchingPolicy: "worktree",
+        },
+        { newBranch: "feature/from-branch-tool" },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects branch creation when branching_policy requires current_branch", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchCreateAndSwitch(
+        {
+          ...repo,
+          branchingPolicy: "current_branch",
+        },
+        { newBranch: "feature/from-current-branch" },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
   it("uses an explicit upstream branch when provided", async () => {

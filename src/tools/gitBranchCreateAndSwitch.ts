@@ -1,4 +1,5 @@
 import { requireAllowedBranchName } from "../auth/branchAuth.js";
+import { requireBranchingPolicy } from "../auth/branchingPolicy.js";
 import { BranchAlreadyExistsError, DirtyWorktreeError, EmptyBranchNameError } from "../errors.js";
 import { branchExists, createBranch, fetchBranch, switchBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
@@ -15,6 +16,7 @@ export async function gitBranchCreateAndSwitch(
   repo: RepoPolicy,
   input: { newBranch: string; branch?: string },
 ): Promise<GitBranchCreateAndSwitchResult> {
+  requireBranchingPolicy(repo, "git_branch_create_and_switch", ["branch"]);
   const normalizedBranch = input.newBranch.trim();
   if (!normalizedBranch) {
     throw new EmptyBranchNameError();
