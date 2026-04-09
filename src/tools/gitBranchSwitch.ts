@@ -15,14 +15,14 @@ export async function gitBranchSwitch(repo: RepoPolicy, branch: string): Promise
 
   const status = await getGitStatus(repo);
   if (!status.isClean) {
-    throw new DirtyWorktreeError(repo.canonicalPath);
+    throw new DirtyWorktreeError(repo.worktreePath);
   }
 
-  if (!(await branchExists(repo.canonicalPath, normalizedBranch))) {
-    throw new BranchNotFoundError(normalizedBranch, repo.canonicalPath);
+  if (!(await branchExists(repo.worktreePath, normalizedBranch))) {
+    throw new BranchNotFoundError(normalizedBranch, repo.worktreePath);
   }
 
-  await switchBranch(repo.canonicalPath, normalizedBranch);
+  await switchBranch(repo.worktreePath, normalizedBranch);
 
   return { branch: normalizedBranch };
 }

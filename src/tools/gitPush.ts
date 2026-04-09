@@ -9,7 +9,7 @@ export type GitPushResult = {
 
 export async function gitPush(repo: RepoPolicy, branch: string): Promise<GitPushResult> {
   const remote = await resolveRepoRemote(repo);
-  await pushBranch(repo.canonicalPath, remote, branch);
+  await pushBranch(repo.worktreePath, remote, branch);
 
   return {
     remote,

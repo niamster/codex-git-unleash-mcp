@@ -16,7 +16,7 @@ export async function gitFetch(repo: RepoPolicy, input: { branch?: string }): Pr
     throw new PathValidationError(`branch '${branch}' must be a plain branch name`);
   }
 
-  await fetchBranch(repo.canonicalPath, remote, branch);
+  await fetchBranch(repo.worktreePath, remote, branch);
 
   return {
     remote,

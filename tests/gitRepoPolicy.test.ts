@@ -8,6 +8,7 @@ describe("getGitRepoPolicy", () => {
     const repo: RepoPolicy = {
       path: "/tmp/repo",
       canonicalPath: "/private/tmp/repo",
+      worktreePath: "/private/tmp/repo",
       allowedBranchPatterns: [/^dm\/.*$/, /^feature\/[a-z0-9._-]+$/],
       defaultRemote: "origin",
       allowDraftPrs: true,

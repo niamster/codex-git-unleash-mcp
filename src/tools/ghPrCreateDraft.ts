@@ -25,7 +25,7 @@ export async function ghPrCreateDraft(
 
   const requestedBase = input.base?.trim();
   const base = requestedBase || (await resolveRepoBaseBranch(repo, await resolveRepoRemote(repo)));
-  const url = await createDraftPullRequest(repo.canonicalPath, {
+  const url = await createDraftPullRequest(repo.worktreePath, {
     base,
     title,
     body: input.body,

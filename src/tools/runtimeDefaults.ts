@@ -10,36 +10,36 @@ import type { RepoPolicy } from "../types/config.js";
 
 export async function resolveRepoRemote(repo: RepoPolicy): Promise<string> {
   if (repo.defaultRemote) {
-    if (await remoteExists(repo.canonicalPath, repo.defaultRemote)) {
+    if (await remoteExists(repo.worktreePath, repo.defaultRemote)) {
       return repo.defaultRemote;
     }
   }
 
-  const currentBranch = await getCurrentBranch(repo.canonicalPath);
+  const currentBranch = await getCurrentBranch(repo.worktreePath);
   if (currentBranch) {
-    const branchRemote = await getBranchRemote(repo.canonicalPath, currentBranch);
-    if (branchRemote && (await remoteExists(repo.canonicalPath, branchRemote))) {
+    const branchRemote = await getBranchRemote(repo.worktreePath, currentBranch);
+    if (branchRemote && (await remoteExists(repo.worktreePath, branchRemote))) {
       return branchRemote;
     }
   }
 
-  if (await remoteExists(repo.canonicalPath, "origin")) {
+  if (await remoteExists(repo.worktreePath, "origin")) {
     return "origin";
   }
 
-  throw new RemoteResolutionError(repo.canonicalPath);
+  throw new RemoteResolutionError(repo.worktreePath);
 }
 
 export async function resolveRepoBaseBranch(repo: RepoPolicy, remote: string): Promise<string> {
-  const remoteHeadBranch = await getRemoteHeadBranch(repo.canonicalPath, remote);
+  const remoteHeadBranch = await getRemoteHeadBranch(repo.worktreePath, remote);
   if (remoteHeadBranch) {
     return remoteHeadBranch;
   }
 
-  const ghDefaultBranch = await getRepoDefaultBranch(repo.canonicalPath);
+  const ghDefaultBranch = await getRepoDefaultBranch(repo.worktreePath);
   if (ghDefaultBranch) {
     return ghDefaultBranch;
   }
 
-  throw new BaseBranchResolutionError(repo.canonicalPath, remote);
+  throw new BaseBranchResolutionError(repo.worktreePath, remote);
 }

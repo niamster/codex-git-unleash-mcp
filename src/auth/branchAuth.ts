@@ -3,13 +3,13 @@ import { getCurrentBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
 
 export async function requireAllowedBranch(repo: RepoPolicy): Promise<string> {
-  const branch = await getCurrentBranch(repo.canonicalPath);
+  const branch = await getCurrentBranch(repo.worktreePath);
   if (!branch) {
-    throw new DetachedHeadError(repo.canonicalPath);
+    throw new DetachedHeadError(repo.worktreePath);
   }
 
   if (!isAllowedBranchName(repo, branch)) {
-    throw new BranchNotAllowedError(branch, repo.canonicalPath);
+    throw new BranchNotAllowedError(branch, repo.worktreePath);
   }
 
   return branch;
@@ -17,7 +17,7 @@ export async function requireAllowedBranch(repo: RepoPolicy): Promise<string> {
 
 export function requireAllowedBranchName(repo: RepoPolicy, branch: string): string {
   if (!isAllowedBranchName(repo, branch)) {
-    throw new BranchNameNotAllowedError(branch, repo.canonicalPath);
+    throw new BranchNameNotAllowedError(branch, repo.worktreePath);
   }
 
   return branch;

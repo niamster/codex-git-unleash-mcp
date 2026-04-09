@@ -2,22 +2,47 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { RepoNotAllowedError } from "../errors.js";
-import { getGitTopLevel } from "../exec/git.js";
+import { getGitCommonDir, getGitTopLevel } from "../exec/git.js";
 import type { Config, RepoPolicy } from "../types/config.js";
 
 export async function resolveAllowedRepo(config: Config, repoPath: string): Promise<RepoPolicy> {
   const absolutePath = path.resolve(repoPath);
-  const canonicalPath = await fs.realpath(absolutePath);
+  const resolvedRepo = await resolveRequestedRepo(absolutePath);
+  if (!resolvedRepo) {
+    throw new RepoNotAllowedError(absolutePath);
+  }
 
-  const repo = config.repositories.find((candidate) => candidate.canonicalPath === canonicalPath);
+  const repo = await findMatchingRepo(config, resolvedRepo.commonDir);
   if (!repo) {
     throw new RepoNotAllowedError(absolutePath);
   }
 
-  const topLevel = await fs.realpath(await getGitTopLevel(repo.canonicalPath));
-  if (topLevel !== repo.canonicalPath) {
-    throw new RepoNotAllowedError(absolutePath);
+  return {
+    ...repo,
+    worktreePath: resolvedRepo.topLevel,
+  };
+}
+
+async function findMatchingRepo(config: Config, commonDir: string): Promise<RepoPolicy | undefined> {
+  for (const candidate of config.repositories) {
+    if ((await getGitCommonDir(candidate.canonicalPath)) === commonDir) {
+      return candidate;
+    }
   }
 
-  return repo;
+  return undefined;
+}
+
+async function resolveRequestedRepo(
+  absolutePath: string,
+): Promise<{ topLevel: string; commonDir: string } | null> {
+  try {
+    const canonicalPath = await fs.realpath(absolutePath);
+    return {
+      topLevel: await fs.realpath(await getGitTopLevel(canonicalPath)),
+      commonDir: await getGitCommonDir(canonicalPath),
+    };
+  } catch {
+    return null;
+  }
 }
