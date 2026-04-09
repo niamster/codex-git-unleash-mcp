@@ -12,6 +12,7 @@ describe("getGitRepoPolicy", () => {
       allowedBranchPatterns: [/^user\/.*$/, /^feature\/[a-z0-9._-]+$/],
       defaultRemote: "origin",
       allowDraftPrs: true,
+      branchingPolicy: "current_branch",
     };
 
     expect(getGitRepoPolicy(repo)).toEqual({
@@ -20,6 +21,7 @@ describe("getGitRepoPolicy", () => {
       allowedBranchPatterns: ["^user\\/.*$", "^feature\\/[a-z0-9._-]+$"],
       defaultRemote: "origin",
       allowDraftPrs: true,
+      branchingPolicy: "current_branch",
     });
   });
 });

@@ -31,6 +31,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
     expect(config.repositories[0]?.defaultRemote).toBeUndefined();
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
+    expect(config.repositories[0]?.branchingPolicy).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
   });
 
@@ -47,6 +48,7 @@ describe("loadConfig", () => {
         '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
+        "  branching_policy: worktree",
         "repositories:",
         `  - path: ${repoDir}`,
       ].join("\n"),
@@ -58,6 +60,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
+    expect(config.repositories[0]?.branchingPolicy).toBe("worktree");
   });
 
   it("appends always-allowed branch patterns to repository policy", async () => {
@@ -99,12 +102,14 @@ describe("loadConfig", () => {
         '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
+        "  branching_policy: worktree",
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
         '      - "^feature/.+$"',
         "    default_remote: origin",
         "    allow_draft_prs: true",
+        "    branching_policy: current_branch",
       ].join("\n"),
       "utf8",
     );
@@ -114,6 +119,7 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
     expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
+    expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
   });
 
   it("appends always-allowed branch patterns to inherited defaults", async () => {
@@ -195,5 +201,27 @@ describe("loadConfig", () => {
     } finally {
       homedirSpy.mockRestore();
     }
+  });
+
+  it("accepts repository-level current-branch workflow policy without defaults", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-current-branch-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-current-branch.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    branching_policy: current_branch",
+        "    allowed_branch_patterns:",
+        '      - "^main$"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.branchingPolicy).toBe("current_branch");
   });
 });

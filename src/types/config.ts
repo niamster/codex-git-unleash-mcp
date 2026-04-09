@@ -1,3 +1,5 @@
+export type BranchingPolicy = "worktree" | "branch" | "current_branch";
+
 export type RepoPolicy = {
   path: string;
   canonicalPath: string;
@@ -5,6 +7,7 @@ export type RepoPolicy = {
   allowedBranchPatterns: RegExp[];
   defaultRemote?: string;
   allowDraftPrs: boolean;
+  branchingPolicy?: BranchingPolicy;
 };
 
 export type Config = {
