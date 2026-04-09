@@ -124,7 +124,7 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects worktree creation when branching_policy requires branch mode", async () => {
+  it("rejects worktree creation when branching_policies excludes worktree", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -132,7 +132,7 @@ describe("gitWorktreeAdd", () => {
       gitWorktreeAdd(
         {
           ...repo,
-          branchingPolicy: "branch",
+          branchingPolicies: ["feature_branch"],
         },
         {
           path: "/tmp/git-mcp-policy-mismatch-worktree",
@@ -142,7 +142,7 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("rejects worktree creation when branching_policy requires current_branch", async () => {
+  it("rejects worktree creation when branching_policies excludes worktree via current_branch-only mode", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -150,7 +150,7 @@ describe("gitWorktreeAdd", () => {
       gitWorktreeAdd(
         {
           ...repo,
-          branchingPolicy: "current_branch",
+          branchingPolicies: ["current_branch"],
         },
         {
           path: "/tmp/git-mcp-current-branch-worktree",
@@ -158,6 +158,44 @@ describe("gitWorktreeAdd", () => {
         },
       ),
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("allows worktree creation when branching_policies includes worktree among multiple strategies", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-add-multi-parent-"));
+    const worktreeDir = path.join(worktreeParentDir, "linked");
+    tempPaths.push(repoDir, remoteDir, worktreeParentDir);
+    const expectedWorktreePath = path.join(await fs.realpath(worktreeParentDir), "linked");
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitWorktreeAdd(
+      {
+        ...repo,
+        branchingPolicies: ["current_branch", "worktree"],
+      },
+      {
+        path: worktreeDir,
+        newBranch: "feature/multi-strategy-worktree",
+      },
+    );
+
+    expect(result).toEqual({
+      branch: "feature/multi-strategy-worktree",
+      remote: "origin",
+      base: "main",
+      path: expectedWorktreePath,
+    });
   });
 
   it("rejects duplicate local branch names", async () => {

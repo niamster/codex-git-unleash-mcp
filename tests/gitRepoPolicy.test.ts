@@ -10,20 +10,22 @@ describe("getGitRepoPolicy", () => {
       canonicalPath: "/private/tmp/repo",
       worktreePath: "/private/tmp/repo",
       allowedBranchPatterns: [/^user\/.*$/, /^feature\/[a-z0-9._-]+$/],
+      featureBranchPattern: "user/<feature-name>",
       gitWorktreeBasePath: "/private/tmp/worktrees",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicy: "current_branch",
+      branchingPolicies: ["current_branch", "feature_branch"],
     };
 
     expect(getGitRepoPolicy(repo)).toEqual({
       path: "/tmp/repo",
       canonicalPath: "/private/tmp/repo",
       allowedBranchPatterns: ["^user\\/.*$", "^feature\\/[a-z0-9._-]+$"],
+      featureBranchPattern: "user/<feature-name>",
       gitWorktreeBasePath: "/private/tmp/worktrees",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicy: "current_branch",
+      branchingPolicies: ["current_branch", "feature_branch"],
     });
   });
 });

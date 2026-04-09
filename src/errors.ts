@@ -31,9 +31,9 @@ export class BranchNameNotAllowedError extends Error {
 }
 
 export class BranchingPolicyViolationError extends Error {
-  constructor(toolName: string, repoPath: string, actualPolicy: string) {
+  constructor(toolName: string, repoPath: string, actualPolicies: string[]) {
     super(
-      `tool '${toolName}' is not allowed for repository '${repoPath}' under branching_policy '${actualPolicy}'; call 'git_repo_policy' and use the setup flow required by that policy`,
+      `tool '${toolName}' is not allowed for repository '${repoPath}' under branching_policies [${actualPolicies.join(", ")}]; call 'git_repo_policy' and use one of the configured setup flows`,
     );
     this.name = "BranchingPolicyViolationError";
   }
