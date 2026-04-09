@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadConfig } from "../src/config.js";
+import { bootstrapConfig, loadConfig, loadOptionalConfig, upsertRepoConfig } from "../src/config.js";
+import { ConfigError } from "../src/errors.js";
 
 const tempPaths: string[] = [];
 
@@ -268,5 +269,129 @@ describe("loadConfig", () => {
     await expect(loadConfig(configPath)).rejects.toThrow(
       "git_worktree_base_path 'tmp/worktrees' must be absolute or start with '~/'",
     );
+  });
+
+  it("returns undefined for a missing optional config file", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-missing.yaml`);
+    tempPaths.push(configPath);
+
+    await expect(loadOptionalConfig(configPath)).resolves.toBeUndefined();
+  });
+});
+
+describe("bootstrapConfig", () => {
+  it("creates a minimal valid config file", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-bootstrap.yaml`);
+    tempPaths.push(configPath);
+
+    const result = await bootstrapConfig(configPath, {
+      feature_branch_pattern: "dm/<feature-name>",
+      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      allow_draft_prs: true,
+    });
+
+    expect(result).toEqual({
+      defaults: {
+        feature_branch_pattern: "dm/<feature-name>",
+        allow_draft_prs: true,
+      },
+      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      repositories: [],
+    });
+
+    await expect(loadConfig(configPath)).resolves.toEqual({ repositories: [] });
+  });
+
+  it("refuses to overwrite an existing config file", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-bootstrap-existing.yaml`);
+    tempPaths.push(configPath);
+    await fs.writeFile(configPath, "repositories: []\n", "utf8");
+
+    await expect(bootstrapConfig(configPath, {})).rejects.toEqual(
+      new ConfigError(`config file '${configPath}' already exists`),
+    );
+  });
+});
+
+describe("upsertRepoConfig", () => {
+  it("creates a new config file with one repo when the config is missing", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-upsert-create-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-upsert-create.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    const result = await upsertRepoConfig(configPath, {
+      repo_path: repoDir,
+      allowed_branch_patterns: ["^dm\\/.*$"],
+      branching_policies: ["worktree"],
+    });
+
+    expect(result).toEqual({
+      action: "created",
+      repo: {
+        path: repoDir,
+        allowed_branch_patterns: ["^dm\\/.*$"],
+        branching_policies: ["worktree"],
+      },
+    });
+
+    const config = await loadConfig(configPath);
+    expect(config.repositories).toHaveLength(1);
+    expect(config.repositories[0]?.path).toBe(repoDir);
+    expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+  });
+
+  it("updates an existing repo entry matched by canonical path", async () => {
+    const repoParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-upsert-update-parent-"));
+    const repoDir = path.join(repoParentDir, "repo");
+    const aliasDir = path.join(repoParentDir, "repo-alias");
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-upsert-update.yaml`);
+    tempPaths.push(repoParentDir, configPath);
+
+    await fs.mkdir(repoDir);
+    await fs.symlink(repoDir, aliasDir);
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^dm\\/.*$"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await upsertRepoConfig(configPath, {
+      repo_path: aliasDir,
+      default_remote: "origin",
+      branching_policies: ["worktree"],
+    });
+
+    expect(result).toEqual({
+      action: "updated",
+      repo: {
+        path: repoDir,
+        allowed_branch_patterns: ["^dm/.*$"],
+        default_remote: "origin",
+        branching_policies: ["worktree"],
+      },
+    });
+
+    const nextConfig = await loadConfig(configPath);
+    expect(nextConfig.repositories).toHaveLength(1);
+    expect(nextConfig.repositories[0]?.defaultRemote).toBe("origin");
+    expect(nextConfig.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+  });
+
+  it("rejects invalid branch regex updates", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-upsert-invalid-regex-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-upsert-invalid-regex.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await expect(
+      upsertRepoConfig(configPath, {
+        repo_path: repoDir,
+        allowed_branch_patterns: ["["],
+      }),
+    ).rejects.toThrow(`invalid branch regex '[' for repository '${repoDir}'`);
   });
 });
