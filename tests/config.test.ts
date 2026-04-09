@@ -44,7 +44,7 @@ describe("loadConfig", () => {
       [
         "defaults:",
         "  allowed_branch_patterns:",
-        '    - "^dm/.+$"',
+        '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "repositories:",
@@ -55,7 +55,7 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^dm\\/.+$"]);
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
   });
@@ -69,7 +69,7 @@ describe("loadConfig", () => {
       configPath,
       [
         'always_allowed_branch_patterns:',
-        '  - "^dm/.+$"',
+        '  - "^user/.+$"',
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
@@ -82,7 +82,7 @@ describe("loadConfig", () => {
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
       "^main$",
-      "^dm\\/.+$",
+      "^user\\/.+$",
     ]);
   });
 
@@ -96,7 +96,7 @@ describe("loadConfig", () => {
       [
         "defaults:",
         "  allowed_branch_patterns:",
-        '    - "^dm/.+$"',
+        '    - "^user/.+$"',
         "  default_remote: upstream",
         "  allow_draft_prs: false",
         "repositories:",
@@ -128,7 +128,7 @@ describe("loadConfig", () => {
         "  allowed_branch_patterns:",
         '    - "^main$"',
         'always_allowed_branch_patterns:',
-        '  - "^dm/.+$"',
+        '  - "^user/.+$"',
         "repositories:",
         `  - path: ${repoDir}`,
       ].join("\n"),
@@ -139,7 +139,7 @@ describe("loadConfig", () => {
 
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
       "^main$",
-      "^dm\\/.+$",
+      "^user\\/.+$",
     ]);
   });
 
@@ -150,13 +150,13 @@ describe("loadConfig", () => {
 
     await fs.writeFile(
       configPath,
-      ['always_allowed_branch_patterns:', '  - "^dm/.+$"', "repositories:", `  - path: ${repoDir}`].join("\n"),
+      ['always_allowed_branch_patterns:', '  - "^user/.+$"', "repositories:", `  - path: ${repoDir}`].join("\n"),
       "utf8",
     );
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^dm\\/.+$"]);
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
   });
 
   it("rejects repositories without effective branch patterns", async () => {

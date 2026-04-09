@@ -197,7 +197,7 @@ defaults:
     - "^main$"
 
 always_allowed_branch_patterns:
-  - "^dm/.*$"
+  - "^user/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
