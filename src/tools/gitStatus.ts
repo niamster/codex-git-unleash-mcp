@@ -8,8 +8,8 @@ type GitStatusResult = {
 };
 
 export async function getGitStatus(repo: RepoPolicy): Promise<GitStatusResult> {
-  const stdout = await getStatus(repo.canonicalPath);
-  const branch = parseBranch(stdout) ?? (await safeCurrentBranch(repo.canonicalPath));
+  const stdout = await getStatus(repo.worktreePath);
+  const branch = parseBranch(stdout) ?? (await safeCurrentBranch(repo.worktreePath));
 
   return {
     branch,

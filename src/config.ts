@@ -54,6 +54,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
     repositories.push({
       path: expandedPath,
       canonicalPath,
+      worktreePath: canonicalPath,
       allowedBranchPatterns,
       defaultRemote: repo.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? true,

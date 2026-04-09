@@ -23,19 +23,19 @@ export async function gitBranchCreateAndSwitch(
 
   const status = await getGitStatus(repo);
   if (!status.isClean) {
-    throw new DirtyWorktreeError(repo.canonicalPath);
+    throw new DirtyWorktreeError(repo.worktreePath);
   }
 
-  if (await branchExists(repo.canonicalPath, normalizedBranch)) {
-    throw new BranchAlreadyExistsError(normalizedBranch, repo.canonicalPath);
+  if (await branchExists(repo.worktreePath, normalizedBranch)) {
+    throw new BranchAlreadyExistsError(normalizedBranch, repo.worktreePath);
   }
 
   const remote = await resolveRepoRemote(repo);
   const base = input.branch?.trim() || (await resolveRepoBaseBranch(repo, remote));
 
-  await fetchBranch(repo.canonicalPath, remote, base);
-  await createBranch(repo.canonicalPath, normalizedBranch, `refs/remotes/${remote}/${base}`);
-  await switchBranch(repo.canonicalPath, normalizedBranch);
+  await fetchBranch(repo.worktreePath, remote, base);
+  await createBranch(repo.worktreePath, normalizedBranch, `refs/remotes/${remote}/${base}`);
+  await switchBranch(repo.worktreePath, normalizedBranch);
 
   return {
     branch: normalizedBranch,

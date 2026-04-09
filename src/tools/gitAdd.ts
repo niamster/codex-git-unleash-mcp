@@ -7,8 +7,8 @@ export type GitAddResult = {
 };
 
 export async function gitAdd(repo: RepoPolicy, inputPaths: string[]): Promise<GitAddResult> {
-  const validatedPaths = validateRepoRelativePaths(repo.canonicalPath, inputPaths);
-  await addPaths(repo.canonicalPath, validatedPaths);
+  const validatedPaths = validateRepoRelativePaths(repo.worktreePath, inputPaths);
+  await addPaths(repo.worktreePath, validatedPaths);
 
   return { addedPaths: validatedPaths };
 }

@@ -13,13 +13,13 @@ export async function gitCommit(repo: RepoPolicy, message: string): Promise<GitC
     throw new EmptyCommitMessageError();
   }
 
-  const stagedChanges = await hasStagedChanges(repo.canonicalPath);
+  const stagedChanges = await hasStagedChanges(repo.worktreePath);
   if (!stagedChanges) {
-    throw new EmptyCommitError(repo.canonicalPath);
+    throw new EmptyCommitError(repo.worktreePath);
   }
 
-  await createCommit(repo.canonicalPath, normalizedMessage);
-  const headCommit = await getHeadCommit(repo.canonicalPath);
+  await createCommit(repo.worktreePath, normalizedMessage);
+  const headCommit = await getHeadCommit(repo.worktreePath);
 
   return {
     commitOid: headCommit.oid,

@@ -1,4 +1,6 @@
+import fs from "node:fs/promises";
 import { runCommand } from "./run.js";
+import path from "node:path";
 
 export function gitStatusArgs(): string[] {
   return ["status", "--short", "--branch"];
@@ -48,6 +50,16 @@ export async function getGitTopLevel(cwd: string): Promise<string> {
   });
 
   return result.stdout.trim();
+}
+
+export async function getGitCommonDir(cwd: string): Promise<string> {
+  const result = await runCommand({
+    cwd,
+    command: "git",
+    argv: ["rev-parse", "--git-common-dir"],
+  });
+
+  return await resolveGitPath(cwd, result.stdout.trim());
 }
 
 export async function getCurrentBranch(cwd: string): Promise<string> {
@@ -199,4 +211,8 @@ export async function getHeadCommit(cwd: string): Promise<{ oid: string; summary
 
   const [oid = "", summary = ""] = result.stdout.trimEnd().split("\n");
   return { oid, summary };
+}
+
+async function resolveGitPath(cwd: string, gitPath: string): Promise<string> {
+  return await fs.realpath(path.resolve(cwd, gitPath));
 }

@@ -20,7 +20,7 @@ import { gitAdd } from "../src/tools/gitAdd.js";
 import { gitBranchCreateAndSwitch } from "../src/tools/gitBranchCreateAndSwitch.js";
 import { gitCommit } from "../src/tools/gitCommit.js";
 import { gitPush } from "../src/tools/gitPush.js";
-import { createTempBareGitRepo, createTempGitRepo } from "./helpers.js";
+import { createLinkedWorktree, createTempBareGitRepo, createTempGitRepo } from "./helpers.js";
 
 const tempPaths: string[] = [];
 
@@ -182,6 +182,42 @@ describe("gitBranchCreateAndSwitch", () => {
     });
     expect(headAfter).toBe("feature/from-release");
     expect(newBranchOid.stdout.trim()).toBe(remoteReleaseOid.stdout.trim());
+  });
+
+  it("creates and switches the branch in a linked worktree", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeDir = path.join(path.dirname(repoDir), "git-mcp-worktree-linked");
+    tempPaths.push(repoDir, remoteDir, worktreeDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const linkedWorktree = await createLinkedWorktree(repoDir, worktreeDir);
+    const result = await gitBranchCreateAndSwitch(
+      {
+        ...repo,
+        worktreePath: linkedWorktree,
+        allowedBranchPatterns: [/^feature\/.+$/],
+      },
+      { newBranch: "feature/from-worktree" },
+    );
+
+    await expect(getCurrentBranch(linkedWorktree)).resolves.toBe("feature/from-worktree");
+    await expect(getCurrentBranch(repoDir)).resolves.toBe("main");
+    expect(result).toEqual({
+      branch: "feature/from-worktree",
+      remote: "origin",
+      base: "main",
+    });
   });
 
   it("uses fixed git fetch, branch creation, and remote-head argument shapes", () => {

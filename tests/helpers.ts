@@ -17,6 +17,7 @@ export async function createTempGitRepo(): Promise<{ repoDir: string; repo: Repo
     repo: {
       path: repoDir,
       canonicalPath: await fs.realpath(repoDir),
+      worktreePath: await fs.realpath(repoDir),
       allowedBranchPatterns: [/^.*$/],
       allowDraftPrs: true,
     },
@@ -27,4 +28,14 @@ export async function createTempBareGitRepo(): Promise<string> {
   const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-remote-"));
   await runCommand({ cwd: repoDir, command: "git", argv: ["init", "--bare"] });
   return repoDir;
+}
+
+export async function createLinkedWorktree(repoDir: string, worktreeDir: string): Promise<string> {
+  await runCommand({
+    cwd: repoDir,
+    command: "git",
+    argv: ["worktree", "add", "--detach", worktreeDir, "HEAD"],
+  });
+
+  return await fs.realpath(worktreeDir);
 }

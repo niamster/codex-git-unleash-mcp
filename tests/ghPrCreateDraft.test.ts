@@ -29,6 +29,7 @@ vi.mock("../src/tools/runtimeDefaults.js", () => ({
 const repo: RepoPolicy = {
   path: "/tmp/repo",
   canonicalPath: "/tmp/repo",
+  worktreePath: "/tmp/repo",
   allowedBranchPatterns: [/^user\/.*$/],
   allowDraftPrs: true,
 };
