@@ -101,6 +101,10 @@ describe("loadConfig", () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-override-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-override.yaml`);
     tempPaths.push(repoDir, configPath);
+    const expectedWorktreeBasePath = path.join(
+      await fs.realpath(path.dirname("/tmp/repo-worktrees")),
+      path.basename("/tmp/repo-worktrees"),
+    );
 
     await fs.writeFile(
       configPath,
@@ -133,7 +137,7 @@ describe("loadConfig", () => {
 
      expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
      expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
-     expect(config.repositories[0]?.gitWorktreeBasePath).toBe("/private/tmp/repo-worktrees");
+     expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedWorktreeBasePath);
      expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch", "feature_branch"]);
