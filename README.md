@@ -46,18 +46,27 @@ Use a config file at `~/.config/codex-git-unleash-mcp.yaml`.
 Example:
 
 ```yaml
+defaults:
+  allowed_branch_patterns:
+    - "^user/.*$"
+  allow_draft_prs: true
+
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
+    default_remote: origin
+  - path: ~/projects/another-repo
     allowed_branch_patterns:
-      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
-    allow_draft_prs: true
+    allow_draft_prs: false
 ```
 
 Notes:
 
 - `path` must be an absolute path or start with `~/`
+- top-level `defaults` are optional and may define `allowed_branch_patterns`, `default_remote`, and `allow_draft_prs`
+- repository values override top-level defaults field-by-field
 - branch patterns are full-match regexes against the current branch name
+- each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited from `defaults`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
@@ -178,9 +187,13 @@ This keeps the tools constrained while still working across repositories that us
 If you want to branch from `main` but only allow mutations on personal feature branches:
 
 ```yaml
+defaults:
+  allowed_branch_patterns:
+    - "^user/.*$"
+
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
+  - path: ~/projects/codex-git-unleash-mcp-enterprise
     allowed_branch_patterns:
-      - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
 ```
