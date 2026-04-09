@@ -1,0 +1,164 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { BranchAlreadyExistsError, BranchNameNotAllowedError, PathValidationError } from "../src/errors.js";
+import { getCurrentBranch } from "../src/exec/git.js";
+import { runCommand } from "../src/exec/run.js";
+import { gitAdd } from "../src/tools/gitAdd.js";
+import { gitCommit } from "../src/tools/gitCommit.js";
+import { gitPush } from "../src/tools/gitPush.js";
+import { gitWorktreeAdd } from "../src/tools/gitWorktreeAdd.js";
+import { createTempBareGitRepo, createTempGitRepo } from "./helpers.js";
+
+const tempPaths: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tempPaths.splice(0).map((tempPath) => fs.rm(tempPath, { force: true, recursive: true })));
+});
+
+describe("gitWorktreeAdd", () => {
+  it("creates a linked worktree for a new branch from the detected upstream base", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-add-parent-"));
+    const worktreeDir = path.join(worktreeParentDir, "linked");
+    tempPaths.push(repoDir, remoteDir, worktreeParentDir);
+    const expectedWorktreePath = path.join(await fs.realpath(worktreeParentDir), "linked");
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitWorktreeAdd(
+      {
+        ...repo,
+        allowedBranchPatterns: [/^feature\/.+$/],
+      },
+      {
+        path: worktreeDir,
+        newBranch: "feature/from-worktree-add",
+      },
+    );
+
+    await expect(getCurrentBranch(repoDir)).resolves.toBe("main");
+    await expect(getCurrentBranch(result.path)).resolves.toBe("feature/from-worktree-add");
+    expect(result).toEqual({
+      branch: "feature/from-worktree-add",
+      remote: "origin",
+      base: "main",
+      path: expectedWorktreePath,
+    });
+  });
+
+  it("uses an explicit upstream branch when provided", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-add-explicit-parent-"));
+    const worktreeDir = path.join(worktreeParentDir, "linked");
+    tempPaths.push(repoDir, remoteDir, worktreeParentDir);
+    const expectedWorktreePath = path.join(await fs.realpath(worktreeParentDir), "linked");
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["checkout", "-b", "release"] });
+    await fs.writeFile(path.join(repoDir, "RELEASE.md"), "release\n", "utf8");
+    await gitAdd(repo, ["RELEASE.md"]);
+    await gitCommit(repo, "add release notes");
+    await gitPush(repo, "release");
+    await runCommand({ cwd: repoDir, command: "git", argv: ["checkout", "main"] });
+
+    const result = await gitWorktreeAdd(repo, {
+      path: worktreeDir,
+      newBranch: "feature/from-release-worktree",
+      branch: "release",
+    });
+
+    await expect(getCurrentBranch(result.path)).resolves.toBe("feature/from-release-worktree");
+    expect(result).toEqual({
+      branch: "feature/from-release-worktree",
+      remote: "origin",
+      base: "release",
+      path: expectedWorktreePath,
+    });
+  });
+
+  it("rejects branch names that do not match allowed patterns", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitWorktreeAdd(
+        {
+          ...repo,
+          allowedBranchPatterns: [/^feature\/.+$/],
+        },
+        {
+          path: "/tmp/git-mcp-disallowed-worktree",
+          newBranch: "dm/disallowed",
+        },
+      ),
+    ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
+  });
+
+  it("rejects duplicate local branch names", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    tempPaths.push(repoDir, remoteDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+    await runCommand({ cwd: repoDir, command: "git", argv: ["branch", "feature/existing"] });
+
+    await expect(
+      gitWorktreeAdd(
+        {
+          ...repo,
+          allowedBranchPatterns: [/^feature\/.+$/],
+        },
+        {
+          path: "/tmp/git-mcp-existing-branch-worktree",
+          newBranch: "feature/existing",
+        },
+      ),
+    ).rejects.toBeInstanceOf(BranchAlreadyExistsError);
+  });
+
+  it("rejects worktree paths inside the repository root", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitWorktreeAdd(repo, {
+        path: path.join(repoDir, "nested-worktree"),
+        newBranch: "feature/inside-repo",
+      }),
+    ).rejects.toBeInstanceOf(PathValidationError);
+  });
+});

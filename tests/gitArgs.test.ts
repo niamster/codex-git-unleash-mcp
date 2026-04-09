@@ -10,6 +10,7 @@ import {
   gitRemoteGetUrlArgs,
   gitRemoteHeadArgs,
   gitSwitchBranchArgs,
+  gitWorktreeAddArgs,
 } from "../src/exec/git.js";
 
 describe("git argument builders", () => {
@@ -44,6 +45,17 @@ describe("git argument builders", () => {
 
   it("builds constrained git branch switch arguments", () => {
     expect(gitSwitchBranchArgs("feature/test-pr")).toEqual(["checkout", "feature/test-pr"]);
+  });
+
+  it("builds constrained git worktree add arguments", () => {
+    expect(gitWorktreeAddArgs("/tmp/worktree", "feature/test-pr", "refs/remotes/origin/main")).toEqual([
+      "worktree",
+      "add",
+      "-b",
+      "feature/test-pr",
+      "/tmp/worktree",
+      "refs/remotes/origin/main",
+    ]);
   });
 
   it("builds constrained git remote resolution arguments", () => {

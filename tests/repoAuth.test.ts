@@ -8,7 +8,7 @@ import { resolveAllowedRepo } from "../src/auth/repoAuth.js";
 import { RepoNotAllowedError } from "../src/errors.js";
 import { runCommand } from "../src/exec/run.js";
 import type { Config } from "../src/types/config.js";
-import { createLinkedWorktree, createTempGitRepo } from "./helpers.js";
+import { configureTestGitRepo, createLinkedWorktree, createTempGitRepo } from "./helpers.js";
 
 const tempPaths: string[] = [];
 
@@ -43,6 +43,7 @@ describe("resolveAllowedRepo", () => {
 
     await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
     await runCommand({ cwd: repoDir, command: "git", argv: ["add", "README.md"] });
+    await configureTestGitRepo(repoDir);
     await runCommand({ cwd: repoDir, command: "git", argv: ["commit", "-m", "init"] });
 
     const linkedWorktree = await createLinkedWorktree(repoDir, worktreeDir);

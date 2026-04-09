@@ -13,6 +13,7 @@ import { gitFetch } from "./tools/gitFetch.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitRepoPolicy } from "./tools/gitRepoPolicy.js";
 import { getGitStatus } from "./tools/gitStatus.js";
+import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
 export function createServer(config: Config): McpServer {
   const server = new McpServer({
@@ -163,6 +164,30 @@ export function createServer(config: Config): McpServer {
     async ({ repo_path, branch }) => {
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitFetch(repo, { branch });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "git_worktree_add",
+    "Create a linked worktree at an explicit absolute path for a new local branch in an allowlisted repository. This tool mutates repository state, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and rejects worktree paths inside the repository root.",
+    {
+      repo_path: z.string().min(1),
+      path: z.string().min(1),
+      new_branch: z.string(),
+      branch: z.string().min(1).optional(),
+    },
+    async ({ repo_path, path, new_branch, branch }) => {
+      const repo = await resolveAllowedRepo(config, repo_path);
+      const result = await gitWorktreeAdd(repo, { path, newBranch: new_branch, branch });
 
       return {
         content: [

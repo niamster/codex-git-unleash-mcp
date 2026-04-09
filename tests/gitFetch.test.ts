@@ -10,7 +10,7 @@ import { gitAdd } from "../src/tools/gitAdd.js";
 import { gitCommit } from "../src/tools/gitCommit.js";
 import { gitFetch } from "../src/tools/gitFetch.js";
 import { gitPush } from "../src/tools/gitPush.js";
-import { createTempBareGitRepo, createTempGitRepo } from "./helpers.js";
+import { configureTestGitRepo, createTempBareGitRepo, createTempGitRepo } from "./helpers.js";
 
 const tempPaths: string[] = [];
 
@@ -33,8 +33,7 @@ describe("gitFetch", () => {
     await runCommand({ cwd: remoteDir, command: "git", argv: ["symbolic-ref", "HEAD", "refs/heads/main"] });
 
     await runCommand({ cwd: updaterDir, command: "git", argv: ["clone", remoteDir, "."] });
-    await runCommand({ cwd: updaterDir, command: "git", argv: ["config", "user.name", "Codex Test"] });
-    await runCommand({ cwd: updaterDir, command: "git", argv: ["config", "user.email", "codex@example.com"] });
+    await configureTestGitRepo(updaterDir);
     await fs.writeFile(path.join(updaterDir, "CHANGELOG.md"), "update\n", "utf8");
     await runCommand({ cwd: updaterDir, command: "git", argv: ["add", "CHANGELOG.md"] });
     await runCommand({ cwd: updaterDir, command: "git", argv: ["commit", "-m", "remote update"] });

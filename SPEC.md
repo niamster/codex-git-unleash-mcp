@@ -68,7 +68,8 @@ At minimum, mutating operations include:
 
 Branch-workflow exception:
 
-- `git_branch_create_and_switch` and `git_branch_switch` may be allowed without current-branch pattern checks as long as they preserve the clean-worktree and constrained-ref safety rules
+- `git_worktree_add`, `git_branch_create_and_switch`, and `git_branch_switch` may be allowed without current-branch pattern checks as long as they preserve the clean-worktree or constrained-worktree and ref safety rules
+- `git_worktree_add` must validate the requested `new_branch` name against the configured allowed branch patterns before creating the linked worktree and branch
 - `git_branch_create_and_switch` must still validate the requested `new_branch` name against the configured allowed branch patterns before creating and switching to it
 
 Read-only operations such as `git_repo_policy` and `git_status` may still require repository allowlisting, but do not necessarily need branch checks unless implementation simplicity makes a uniform check preferable.
@@ -114,6 +115,7 @@ The server may expose structured tools for operations such as:
 - repository inspection and policy inspection
 - constrained staging and commit creation
 - constrained branch creation and branch switching
+- constrained linked worktree creation
 - constrained remote synchronization
 - constrained GitHub pull request creation
 

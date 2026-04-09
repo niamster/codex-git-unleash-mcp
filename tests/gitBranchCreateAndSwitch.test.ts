@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -187,8 +188,9 @@ describe("gitBranchCreateAndSwitch", () => {
   it("creates and switches the branch in a linked worktree", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     const remoteDir = await createTempBareGitRepo();
-    const worktreeDir = path.join(path.dirname(repoDir), "git-mcp-worktree-linked");
-    tempPaths.push(repoDir, remoteDir, worktreeDir);
+    const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-parent-"));
+    const worktreeDir = path.join(worktreeParentDir, "linked");
+    tempPaths.push(repoDir, remoteDir, worktreeParentDir);
 
     await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
     await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
