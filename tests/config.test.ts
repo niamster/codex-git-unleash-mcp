@@ -27,13 +27,13 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
     const canonicalRepoDir = await fs.realpath(repoDir);
 
-    expect(config.repositories).toHaveLength(1);
-    expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
-    expect(config.repositories[0]?.defaultRemote).toBeUndefined();
-    expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
-    expect(config.repositories[0]?.gitWorktreeBasePath).toBeUndefined();
-    expect(config.repositories[0]?.allowDraftPrs).toBe(true);
-    expect(config.repositories[0]?.branchingPolicies).toBeUndefined();
+     expect(config.repositories).toHaveLength(1);
+     expect(config.repositories[0]?.canonicalPath).toBe(canonicalRepoDir);
+     expect(config.repositories[0]?.defaultRemote).toBeUndefined();
+     expect(config.repositories[0]?.gitWorktreeBasePath).toBeUndefined();
+     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
+     expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
+     expect(config.repositories[0]?.branchingPolicies).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
   });
 
@@ -63,10 +63,10 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
     const expectedBasePath = path.join(os.homedir(), "git-worktrees");
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
-    expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
-    expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedBasePath);
-    expect(config.repositories[0]?.defaultRemote).toBe("upstream");
+     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+     expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
+     expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedBasePath);
+     expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
   });
@@ -131,10 +131,10 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
-    expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
-    expect(config.repositories[0]?.gitWorktreeBasePath).toBe("/private/tmp/repo-worktrees");
-    expect(config.repositories[0]?.defaultRemote).toBe("origin");
+     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
+     expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
+     expect(config.repositories[0]?.gitWorktreeBasePath).toBe("/private/tmp/repo-worktrees");
+     expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch", "feature_branch"]);
   });

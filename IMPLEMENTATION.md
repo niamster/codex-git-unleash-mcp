@@ -109,6 +109,7 @@ repositories:
     allowed_branch_patterns:
       - "^user/.*$"
       - "^feature/[a-z0-9._-]+$"
+    feature_branch_pattern: "user/<feature-name>"
     default_remote: origin
     allow_draft_prs: true
 ```
