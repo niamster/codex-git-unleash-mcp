@@ -46,7 +46,7 @@ npm install
 
 Use a config file at `~/.config/codex-git-unleash-mcp.yaml`.
 
-If that file does not exist yet, the server can still start in a limited config-only mode. In that mode it exposes `config_bootstrap` and `config_upsert_repo` so you can create the initial YAML and add repository entries before enabling the full Git and GitHub tool surface.
+If that file does not exist yet, the server still starts and exposes the full tool surface. `config_bootstrap` and `config_upsert_repo` can create or update the YAML, and the runtime Git/GitHub tools will pick up the changed config on the next tool call.
 
 Example:
 
@@ -81,7 +81,7 @@ Notes:
 - `path` must be an absolute path or start with `~/`
 - `config_bootstrap` creates a minimal valid YAML config file and refuses to overwrite an existing file
 - `config_upsert_repo` adds or updates one repository entry in the YAML config and matches existing entries by canonical repository path
-- config changes do not hot-reload the running server in this version; restart the MCP server after calling `config_bootstrap` or `config_upsert_repo`
+- config changes are reloaded from disk on the next tool call, so a server restart is not required after `config_bootstrap` or `config_upsert_repo`
 - top-level `defaults` are optional and may define `allowed_branch_patterns`, `feature_branch_pattern`, `git_worktree_base_path`, `default_remote`, `allow_draft_prs`, and `branching_policies`
 - top-level `always_allowed_branch_patterns` are optional and are appended to every repository's effective branch policy
 - repository values override top-level defaults field-by-field
@@ -111,8 +111,8 @@ Notes:
 
 The intended happy path is:
 
-1. If the config file does not exist yet, call `config_bootstrap` to create it, then restart the MCP server.
-2. Call `config_upsert_repo` to add or update an allowlisted repository entry when needed, then restart the MCP server.
+1. If the config file does not exist yet, call `config_bootstrap` to create it.
+2. Call `config_upsert_repo` to add or update an allowlisted repository entry when needed.
 3. Call `git_repo_policy` or `git_status` to inspect the allowlisted repository.
 4. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
 5. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
@@ -138,7 +138,7 @@ You can also provide the config path through `GIT_UNLEASH_MCP_CONFIG`:
 GIT_UNLEASH_MCP_CONFIG=~/.config/codex-git-unleash-mcp.yaml npm run dev
 ```
 
-If the config path points to a file that does not exist yet, the server starts in config-only mode instead of exiting immediately. After creating or updating config through the config tools, restart the server so it reloads the YAML and exposes the full runtime tool set.
+If the config path points to a file that does not exist yet, the server still starts. Runtime tools that need an allowlist will fail with a config guidance error until you create or update the YAML, and they will pick up the file on the next tool call.
 
 ## Build
 
@@ -196,8 +196,8 @@ On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before fail
 
 Once registered, Codex should be able to use:
 
-- `config_bootstrap` to create the initial YAML config file when it does not exist yet; it writes a minimal valid config and requires a server restart before other tools see the new settings
-- `config_upsert_repo` to add or update one repository entry in the YAML config; it validates the resulting file against the existing schema, matches existing repos by canonical path, and requires a server restart before the runtime config changes take effect
+- `config_bootstrap` to create the initial YAML config file when it does not exist yet; it writes a minimal valid config and the runtime tool handlers will see it on their next call
+- `config_upsert_repo` to add or update one repository entry in the YAML config; it validates the resulting file against the existing schema, matches existing repos by canonical path, and the runtime tool handlers will see the updated policy on their next call
 - `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, suggested feature-branch pattern, configured worktree base path, default remote, and draft-PR setting for an allowlisted repository
 - `git_status` for an allowlisted repository
 - `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
@@ -211,7 +211,7 @@ Once registered, Codex should be able to use:
 
 Mutating tools reject detached HEAD.
 
-When the config file is missing, only `config_bootstrap` and `config_upsert_repo` are exposed. The Git and GitHub tools are registered only after the server loads a valid runtime config.
+When the config file is missing, runtime tools remain registered but fail with a guidance error until the config is created. Once the YAML exists, the next tool call reloads it from disk.
 
 ## Remote And Base Resolution
 
@@ -261,7 +261,6 @@ repositories:
 If you want to bootstrap the config and then add this repository incrementally, a minimal progression is:
 
 1. Call `config_bootstrap` with defaults such as `feature_branch_pattern`, `always_allowed_branch_patterns`, or `branching_policies`.
-2. Restart the MCP server.
-3. Call `config_upsert_repo` with `repo_path`, and optionally `git_worktree_base_path`, `default_remote`, `allowed_branch_patterns`, or `branching_policies`.
-4. Restart the MCP server again before using the Git tools against that repository.
+2. Call `config_upsert_repo` with `repo_path`, and optionally `git_worktree_base_path`, `default_remote`, `allowed_branch_patterns`, or `branching_policies`.
+3. Use the Git tools against that repository; they will reload the YAML on each call.
 ```

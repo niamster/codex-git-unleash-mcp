@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { bootstrapConfig, upsertRepoConfig } from "./config.js";
-import type { Config } from "./types/config.js";
+import { bootstrapConfig, loadOptionalConfig, upsertRepoConfig } from "./config.js";
+import { ConfigError } from "./errors.js";
 import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
@@ -27,14 +27,10 @@ const configPolicyFields = {
   branching_policies: branchingPoliciesSchema.optional(),
 };
 
-export function getRegisteredToolNames(hasRuntimeConfig: boolean): string[] {
-  const configToolNames = ["config_bootstrap", "config_upsert_repo"];
-  if (!hasRuntimeConfig) {
-    return configToolNames;
-  }
-
+export function getRegisteredToolNames(): string[] {
   return [
-    ...configToolNames,
+    "config_bootstrap",
+    "config_upsert_repo",
     "git_repo_policy",
     "git_status",
     "git_add",
@@ -48,7 +44,18 @@ export function getRegisteredToolNames(hasRuntimeConfig: boolean): string[] {
   ];
 }
 
-export function createServer(configPath: string, config?: Config): McpServer {
+export async function loadRuntimeConfig(configPath: string) {
+  const config = await loadOptionalConfig(configPath);
+  if (!config) {
+    throw new ConfigError(
+      `config file '${configPath}' does not exist; call 'config_bootstrap' to create it or 'config_upsert_repo' to create it with a repository entry`,
+    );
+  }
+
+  return config;
+}
+
+export function createServer(configPath: string): McpServer {
   const server = new McpServer({
     name: "codex-git-unleash-mcp",
     version: "0.1.0",
@@ -113,10 +120,6 @@ export function createServer(configPath: string, config?: Config): McpServer {
     },
   );
 
-  if (!config) {
-    return server;
-  }
-
   server.tool(
     "git_repo_policy",
     "Return the configured policy for an allowlisted repository. This tool is read-only and exposes the branch patterns and related repository defaults that other tools enforce.",
@@ -124,6 +127,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       repo_path: z.string().min(1),
     },
     async ({ repo_path }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = getGitRepoPolicy(repo);
 
@@ -145,6 +149,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       repo_path: z.string().min(1),
     },
     async ({ repo_path }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const status = await getGitStatus(repo);
 
@@ -167,6 +172,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       paths: z.array(z.string().min(1)).min(1),
     },
     async ({ repo_path, paths }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       await requireAllowedBranch(repo);
       const result = await gitAdd(repo, paths);
@@ -190,6 +196,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       message: z.string(),
     },
     async ({ repo_path, message }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       await requireAllowedBranch(repo);
       const result = await gitCommit(repo, message);
@@ -214,6 +221,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       branch: z.string().min(1).optional(),
     },
     async ({ repo_path, new_branch, branch }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitBranchCreateAndSwitch(repo, { newBranch: new_branch, branch });
 
@@ -236,6 +244,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       branch: z.string(),
     },
     async ({ repo_path, branch }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitBranchSwitch(repo, branch);
 
@@ -258,6 +267,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       branch: z.string().optional(),
     },
     async ({ repo_path, branch }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitFetch(repo, { branch });
 
@@ -282,6 +292,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       branch: z.string().min(1).optional(),
     },
     async ({ repo_path, path, new_branch, branch }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const result = await gitWorktreeAdd(repo, { path, newBranch: new_branch, branch });
 
@@ -303,6 +314,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       repo_path: z.string().min(1),
     },
     async ({ repo_path }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const branch = await requireAllowedBranch(repo);
       const result = await gitPush(repo, branch);
@@ -328,6 +340,7 @@ export function createServer(configPath: string, config?: Config): McpServer {
       base: z.string().min(1).optional(),
     },
     async ({ repo_path, title, body, base }) => {
+      const config = await loadRuntimeConfig(configPath);
       const repo = await resolveAllowedRepo(config, repo_path);
       const branch = await requireAllowedBranch(repo);
       const result = await ghPrCreateDraft(repo, branch, { title, body, base });
