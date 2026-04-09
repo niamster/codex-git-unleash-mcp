@@ -6,7 +6,7 @@ export type GitRepoPolicyResult = {
   allowedBranchPatterns: string[];
   defaultRemote?: string;
   allowDraftPrs: boolean;
-  branchingPolicy?: string;
+  branchingPolicies?: string[];
 };
 
 export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
@@ -16,6 +16,6 @@ export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
     allowedBranchPatterns: repo.allowedBranchPatterns.map((pattern) => pattern.source),
     defaultRemote: repo.defaultRemote,
     allowDraftPrs: repo.allowDraftPrs,
-    branchingPolicy: repo.branchingPolicy,
+    branchingPolicies: repo.branchingPolicies,
   };
 }

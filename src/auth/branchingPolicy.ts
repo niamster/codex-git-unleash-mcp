@@ -6,11 +6,11 @@ export function requireBranchingPolicy(
   toolName: string,
   allowedPolicies: BranchingPolicy[],
 ): void {
-  if (!repo.branchingPolicy) {
+  if (!repo.branchingPolicies || repo.branchingPolicies.length === 0) {
     return;
   }
 
-  if (!allowedPolicies.includes(repo.branchingPolicy)) {
-    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.branchingPolicy);
+  if (!repo.branchingPolicies.some((policy) => allowedPolicies.includes(policy))) {
+    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.branchingPolicies);
   }
 }

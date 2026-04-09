@@ -8,13 +8,14 @@ import { z } from "zod";
 import { ConfigError } from "./errors.js";
 import type { BranchingPolicy, Config, RepoPolicy } from "./types/config.js";
 
-const branchingPolicySchema = z.enum(["worktree", "branch", "current_branch"]);
+const branchingPolicySchema = z.enum(["worktree", "feature_branch", "current_branch"]);
+const branchingPoliciesSchema = z.array(branchingPolicySchema).nonempty();
 
 const policyDefaultsSchema = z.object({
   allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
-  branching_policy: branchingPolicySchema.optional(),
+  branching_policies: branchingPoliciesSchema.optional(),
 });
 
 const repoPolicySchema = policyDefaultsSchema.extend({
@@ -66,7 +67,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
       allowedBranchPatterns,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
-      branchingPolicy: resolveBranchingPolicy(repo.branching_policy, config.defaults?.branching_policy),
+      branchingPolicies: resolveBranchingPolicies(repo.branching_policies, config.defaults?.branching_policies),
     });
 
     seenPaths.add(canonicalPath);
@@ -75,11 +76,11 @@ export async function loadConfig(configPath: string): Promise<Config> {
   return { repositories };
 }
 
-function resolveBranchingPolicy(
-  repoPolicy: BranchingPolicy | undefined,
-  defaultPolicy: BranchingPolicy | undefined,
-): BranchingPolicy | undefined {
-  return repoPolicy ?? defaultPolicy;
+function resolveBranchingPolicies(
+  repoPolicies: BranchingPolicy[] | undefined,
+  defaultPolicies: BranchingPolicy[] | undefined,
+): BranchingPolicy[] | undefined {
+  return repoPolicies ?? defaultPolicies;
 }
 
 function expandHomeDir(inputPath: string): string {

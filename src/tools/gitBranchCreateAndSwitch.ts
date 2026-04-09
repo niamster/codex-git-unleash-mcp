@@ -16,7 +16,7 @@ export async function gitBranchCreateAndSwitch(
   repo: RepoPolicy,
   input: { newBranch: string; branch?: string },
 ): Promise<GitBranchCreateAndSwitchResult> {
-  requireBranchingPolicy(repo, "git_branch_create_and_switch", ["branch"]);
+  requireBranchingPolicy(repo, "git_branch_create_and_switch", ["feature_branch"]);
   const normalizedBranch = input.newBranch.trim();
   if (!normalizedBranch) {
     throw new EmptyBranchNameError();
