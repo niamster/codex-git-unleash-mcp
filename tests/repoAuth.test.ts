@@ -29,6 +29,7 @@ describe("resolveAllowedRepo", () => {
           worktreePath: "/tmp/other",
           allowedBranchPatterns: [/^feature\/.+$/],
           allowDraftPrs: true,
+          policySource: "global",
         },
       ],
     };
@@ -56,5 +57,30 @@ describe("resolveAllowedRepo", () => {
 
     expect(resolvedRepo.canonicalPath).toBe(repo.canonicalPath);
     expect(resolvedRepo.worktreePath).toBe(linkedWorktree);
+  });
+
+  it("falls back to repo-local policy when the repository is not globally allowlisted", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+    const canonicalRepoDir = await fs.realpath(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^dm/.+$"',
+        'feature_branch_pattern: "dm/<feature-name>"',
+        "git_worktree_base_path: .worktrees",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const resolvedRepo = await resolveAllowedRepo({ repositories: [] }, repoDir);
+
+    expect(resolvedRepo.policySource).toBe("repo_local");
+    expect(resolvedRepo.repoLocalConfigPath).toBe(path.join(canonicalRepoDir, ".git-unleash.yaml"));
+    expect(resolvedRepo.featureBranchPattern).toBe("dm/<feature-name>");
+    expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^dm\\/.+$"]);
   });
 });

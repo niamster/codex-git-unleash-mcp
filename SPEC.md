@@ -36,6 +36,8 @@ It should not expose raw command execution, generic `git` passthrough, or generi
 
 The server must be configurable with an allowlist of repositories.
 
+It may also support a fixed repo-local policy file as a fallback authorization source, as long as that policy is hardened against local widening before any MCP action is allowed to rely on it.
+
 Each allowed repository must define:
 
 - repository path
@@ -43,11 +45,13 @@ Each allowed repository must define:
 
 Repository authorization rules:
 
-- the requested repository must resolve to an allowlisted repository
+- the requested repository must resolve to an allowlisted repository or to a repository with a trusted supported repo-local policy file
 - symlink or path-traversal tricks must not allow escaping the configured repository
 - operations must execute only inside an allowed repository
 
 Initial implementations may enforce this by canonicalizing paths and requiring an exact match to a configured repository root, but the safety requirement is repository scoping, not a particular path-matching strategy.
+
+If repo-local policy is supported, the server must fail closed whenever the working tree or index copy of that policy differs from the trusted base-branch copy.
 
 ## Branch Authorization Model
 

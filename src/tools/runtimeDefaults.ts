@@ -8,8 +8,13 @@ import {
 } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
 
-export async function resolveRepoRemote(repo: RepoPolicy): Promise<string> {
-  if (repo.defaultRemote) {
+export async function resolveRepoRemote(
+  repo: RepoPolicy,
+  options: { allowConfiguredDefaultRemote?: boolean } = {},
+): Promise<string> {
+  const allowConfiguredDefaultRemote = options.allowConfiguredDefaultRemote ?? true;
+
+  if (allowConfiguredDefaultRemote && repo.defaultRemote) {
     if (await remoteExists(repo.worktreePath, repo.defaultRemote)) {
       return repo.defaultRemote;
     }

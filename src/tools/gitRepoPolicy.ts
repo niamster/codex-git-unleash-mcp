@@ -9,6 +9,8 @@ export type GitRepoPolicyResult = {
   defaultRemote?: string;
   allowDraftPrs: boolean;
   branchingPolicies?: string[];
+  policySource: string;
+  repoLocalConfigPath?: string;
 };
 
 export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
@@ -21,5 +23,7 @@ export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
     defaultRemote: repo.defaultRemote,
     allowDraftPrs: repo.allowDraftPrs,
     branchingPolicies: repo.branchingPolicies,
+    policySource: repo.policySource,
+    repoLocalConfigPath: repo.repoLocalConfigPath,
   };
 }
