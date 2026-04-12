@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { bootstrapConfig, loadOptionalConfig, upsertRepoConfig } from "./config.js";
+import { ConfigError, RepoNotAllowedError } from "./errors.js";
 import { requireAllowedBranch } from "./auth/branchAuth.js";
 import { requireTrustedRepoPolicy } from "./auth/repoPolicyTrust.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
@@ -46,7 +47,13 @@ export function getRegisteredToolNames(): string[] {
 
 export async function loadRuntimeConfig(configPath: string) {
   const config = await loadOptionalConfig(configPath);
-  return config ?? { repositories: [] };
+  if (!config) {
+    throw new ConfigError(
+      `config file '${configPath}' does not exist; call 'config_bootstrap' to create it or 'config_upsert_repo' to create it with a repository entry`,
+    );
+  }
+
+  return config;
 }
 
 export function createServer(configPath: string): McpServer {
@@ -348,8 +355,25 @@ async function resolveRuntimeRepo(
   repoPath: string,
   options: { requireTrustedRepoPolicy?: boolean } = {},
 ) {
-  const config = await loadRuntimeConfig(configPath);
-  const repo = await resolveAllowedRepo(config, repoPath);
+  const config = await loadOptionalConfig(configPath);
+  let repo;
+
+  if (config) {
+    repo = await resolveAllowedRepo(config, repoPath);
+  } else {
+    try {
+      repo = await resolveAllowedRepo({ repositories: [] }, repoPath);
+    } catch (error) {
+      if (error instanceof RepoNotAllowedError) {
+        throw new ConfigError(
+          `config file '${configPath}' does not exist; call 'config_bootstrap' to create it or 'config_upsert_repo' to create it with a repository entry`,
+        );
+      }
+
+      throw error;
+    }
+  }
+
   if (options.requireTrustedRepoPolicy ?? true) {
     await requireTrustedRepoPolicy(repo);
   }
