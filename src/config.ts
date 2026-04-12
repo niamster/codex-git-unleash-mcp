@@ -108,7 +108,7 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
     canonicalPath: canonicalRepoRoot,
     worktreePath: canonicalRepoRoot,
     allowedBranchPatterns: compileBranchPatterns(parsed.allowed_branch_patterns, canonicalRepoRoot),
-    featureBranchPattern: parsed.feature_branch_pattern,
+    featureBranchPattern: resolveFeatureBranchPattern(parsed.feature_branch_pattern),
     gitWorktreeBasePath: await resolveGitWorktreeBasePath(parsed.git_worktree_base_path, { repoRoot: canonicalRepoRoot }),
     allowDraftPrs: parsed.allow_draft_prs ?? true,
     branchingPolicies: parsed.branching_policies,
@@ -215,7 +215,7 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       canonicalPath,
       worktreePath: canonicalPath,
       allowedBranchPatterns,
-      featureBranchPattern: repo.feature_branch_pattern ?? config.defaults?.feature_branch_pattern,
+      featureBranchPattern: resolveFeatureBranchPattern(repo.feature_branch_pattern ?? config.defaults?.feature_branch_pattern),
       gitWorktreeBasePath,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
@@ -284,6 +284,47 @@ function resolveBranchingPolicies(
   defaultPolicies: BranchingPolicy[] | undefined,
 ): BranchingPolicy[] | undefined {
   return repoPolicies ?? defaultPolicies;
+}
+
+function resolveFeatureBranchPattern(pattern: string | undefined): string | undefined {
+  return resolveUserPlaceholder(pattern);
+}
+
+function resolveUserPlaceholder(value: string | undefined): string | undefined {
+  if (!value?.includes("<user>")) {
+    return value;
+  }
+
+  return value.replaceAll("<user>", resolveRuntimeUsername());
+}
+
+function resolveRuntimeUsername(): string {
+  const envUsername = firstNonEmptyValue(process.env.USER, process.env.USERNAME);
+  if (envUsername) {
+    return envUsername;
+  }
+
+  try {
+    const systemUsername = firstNonEmptyValue(os.userInfo().username);
+    if (systemUsername) {
+      return systemUsername;
+    }
+  } catch {
+    // Ignore lookup failures and fall through to a config error below.
+  }
+
+  throw new ConfigError("config uses '<user>' but no runtime username could be determined");
+}
+
+function firstNonEmptyValue(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
 }
 
 function expandHomeDir(inputPath: string): string {
@@ -372,11 +413,13 @@ async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
 
 function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
   return patterns.map((pattern) => {
+    const resolvedPattern = resolveUserPlaceholder(pattern) ?? pattern;
+
     try {
-      return new RegExp(pattern);
+      return new RegExp(resolvedPattern);
     } catch (error) {
       throw new ConfigError(
-        `invalid branch regex '${pattern}' for repository '${repoPath}': ${
+        `invalid branch regex '${resolvedPattern}' for repository '${repoPath}': ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

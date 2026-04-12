@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { requireTrustedRepoPolicy } from "../src/auth/repoPolicyTrust.js";
 import { resolveAllowedRepo } from "../src/auth/repoAuth.js";
@@ -12,6 +12,8 @@ import { configureTestGitRepo, createTempBareGitRepo, createTempGitRepo } from "
 const tempPaths: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await Promise.all(tempPaths.splice(0).map((tempPath) => fs.rm(tempPath, { force: true, recursive: true })));
 });
 
@@ -45,6 +47,8 @@ async function setupRepoWithTrustedRepoLocalPolicy() {
   const { repoDir } = await createTempGitRepo();
   const remoteDir = await createTempBareGitRepo();
   tempPaths.push(repoDir, remoteDir);
+  vi.stubEnv("USER", "codex");
+  vi.stubEnv("USERNAME", "");
 
   const policyPath = path.join(repoDir, ".git-unleash.yaml");
   await fs.writeFile(
@@ -52,7 +56,7 @@ async function setupRepoWithTrustedRepoLocalPolicy() {
     [
       "allowed_branch_patterns:",
       '  - "^main$"',
-      'feature_branch_pattern: "dm/<feature-name>"',
+      'feature_branch_pattern: "<user>/<feature-name>"',
     ].join("\n"),
     "utf8",
   );

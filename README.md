@@ -56,14 +56,14 @@ Example:
 defaults:
   allowed_branch_patterns:
     - "^main$"
-  feature_branch_pattern: "user/<feature-name>"
+  feature_branch_pattern: "<user>/<feature-name>"
   git_worktree_base_path: /tmp/git-worktrees
   allow_draft_prs: true
   branching_policies:
     - worktree
 
 always_allowed_branch_patterns:
-  - "^user/.*$"
+  - "^<user>/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp
@@ -89,6 +89,7 @@ Notes:
 - repository values override top-level defaults field-by-field
 - `defaults.allowed_branch_patterns` are inherited or overridden, while `always_allowed_branch_patterns` are always added
 - `feature_branch_pattern` is an optional suggested naming template for new feature branches; it is advisory metadata and does not grant permission to use a branch name that fails `allowed_branch_patterns`
+- `allowed_branch_patterns`, `always_allowed_branch_patterns`, and `feature_branch_pattern` may include `<user>`, which resolves at runtime from `USER`, then `USERNAME`, then the system username
 - `git_worktree_base_path` is inherited or overridden per repository and, when configured, constrains `git_worktree_add.path` to stay under that base
 - for Codex workflows, prefer a repo-specific in-repository worktree base such as `.worktrees/` when you want linked worktrees to stay under the same trusted project root; add that directory to `.gitignore`
 - `branching_policies` is optional and enforced for branch-setup tools; supported values are `worktree`, `feature_branch`, and `current_branch`
@@ -117,8 +118,8 @@ Example:
 
 ```yaml
 allowed_branch_patterns:
-  - "^user/.*$"
-feature_branch_pattern: "user/<feature-name>"
+  - "^<user>/.*$"
+feature_branch_pattern: "<user>/<feature-name>"
 git_worktree_base_path: .worktrees
 branching_policies:
   - worktree
@@ -261,7 +262,7 @@ defaults:
     - "^main$"
 
 always_allowed_branch_patterns:
-  - "^user/.*$"
+  - "^<user>/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp

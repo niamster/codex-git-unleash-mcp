@@ -10,6 +10,8 @@ import { ConfigError } from "../src/errors.js";
 const tempPaths: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await Promise.all(tempPaths.splice(0).map((tempPath) => fs.rm(tempPath, { force: true, recursive: true })));
 });
 
@@ -70,6 +72,160 @@ describe("loadConfig", () => {
      expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
     expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+  });
+
+  it("resolves <user> in inherited feature branch patterns from USER", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-user-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-user-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^codex/.+$"',
+        '  feature_branch_pattern: "<user>/<feature-name>"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.featureBranchPattern).toBe("codex/<feature-name>");
+  });
+
+  it("resolves <user> in inherited allowed branch patterns from USER", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-user-allowed-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-user-allowed-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^<user>/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+  });
+
+  it("falls back to USERNAME before os.userInfo for <user> resolution", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-username-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-username-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "");
+    vi.stubEnv("USERNAME", "codex-win");
+    const userInfoSpy = vi.spyOn(os, "userInfo");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^codex-win/.+$"',
+        '    feature_branch_pattern: "<user>/<feature-name>"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.featureBranchPattern).toBe("codex-win/<feature-name>");
+    expect(userInfoSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to os.userInfo when USER and USERNAME are unavailable", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-userinfo-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-userinfo-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "");
+    vi.stubEnv("USERNAME", "");
+    vi.spyOn(os, "userInfo").mockReturnValue({
+      username: "system-user",
+      uid: 501,
+      gid: 20,
+      shell: "/bin/zsh",
+      homedir: "/Users/system-user",
+    });
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^system-user/.+$"',
+        '    feature_branch_pattern: "<user>/<feature-name>"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.featureBranchPattern).toBe("system-user/<feature-name>");
+  });
+
+  it("resolves <user> in always-allowed branch patterns", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-user-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-user-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "always_allowed_branch_patterns:",
+        '  - "^<user>/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+  });
+
+  it("rejects <user> config values when no runtime username can be determined", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-missing-user-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-missing-user-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "");
+    vi.stubEnv("USERNAME", "");
+    vi.spyOn(os, "userInfo").mockImplementation(() => {
+      throw new Error("no user");
+    });
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^<user>/.+$"',
+        '    feature_branch_pattern: "<user>/<feature-name>"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow("config uses '<user>' but no runtime username could be determined");
   });
 
   it("appends always-allowed branch patterns to repository policy", async () => {
@@ -285,17 +441,17 @@ describe("bootstrapConfig", () => {
     tempPaths.push(configPath);
 
     const result = await bootstrapConfig(configPath, {
-      feature_branch_pattern: "dm/<feature-name>",
-      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      feature_branch_pattern: "owner/<feature-name>",
+      always_allowed_branch_patterns: ["^owner\\/.*$"],
       allow_draft_prs: true,
     });
 
     expect(result).toEqual({
       defaults: {
-        feature_branch_pattern: "dm/<feature-name>",
+        feature_branch_pattern: "owner/<feature-name>",
         allow_draft_prs: true,
       },
-      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      always_allowed_branch_patterns: ["^owner\\/.*$"],
       repositories: [],
     });
 
@@ -321,7 +477,7 @@ describe("upsertRepoConfig", () => {
 
     const result = await upsertRepoConfig(configPath, {
       repo_path: repoDir,
-      allowed_branch_patterns: ["^dm\\/.*$"],
+      allowed_branch_patterns: ["^owner\\/.*$"],
       branching_policies: ["worktree"],
     });
 
@@ -329,7 +485,7 @@ describe("upsertRepoConfig", () => {
       action: "created",
       repo: {
         path: repoDir,
-        allowed_branch_patterns: ["^dm\\/.*$"],
+        allowed_branch_patterns: ["^owner\\/.*$"],
         branching_policies: ["worktree"],
       },
     });
@@ -355,7 +511,7 @@ describe("upsertRepoConfig", () => {
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
-        '      - "^dm\\/.*$"',
+        '      - "^owner\\/.*$"',
       ].join("\n"),
       "utf8",
     );
@@ -370,7 +526,7 @@ describe("upsertRepoConfig", () => {
       action: "updated",
       repo: {
         path: repoDir,
-        allowed_branch_patterns: ["^dm/.*$"],
+        allowed_branch_patterns: ["^owner/.*$"],
         default_remote: "origin",
         branching_policies: ["worktree"],
       },

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveAllowedRepo } from "../src/auth/repoAuth.js";
 import { ConfigError, RepoNotAllowedError } from "../src/errors.js";
@@ -13,6 +13,8 @@ import { configureTestGitRepo, createLinkedWorktree, createTempGitRepo } from ".
 const tempPaths: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await Promise.all(tempPaths.splice(0).map((tempPath) => fs.rm(tempPath, { force: true, recursive: true })));
 });
 
@@ -63,13 +65,15 @@ describe("resolveAllowedRepo", () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
     const canonicalRepoDir = await fs.realpath(repoDir);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
 
     await fs.writeFile(
       path.join(repoDir, ".git-unleash.yaml"),
       [
         "allowed_branch_patterns:",
-        '  - "^dm/.+$"',
-        'feature_branch_pattern: "dm/<feature-name>"',
+        '  - "^<user>/.+$"',
+        'feature_branch_pattern: "<user>/<feature-name>"',
         "git_worktree_base_path: .worktrees",
       ].join("\n"),
       "utf8",
@@ -79,9 +83,9 @@ describe("resolveAllowedRepo", () => {
 
     expect(resolvedRepo.policySource).toBe("repo_local");
     expect(resolvedRepo.repoLocalConfigPath).toBe(path.join(canonicalRepoDir, ".git-unleash.yaml"));
-    expect(resolvedRepo.featureBranchPattern).toBe("dm/<feature-name>");
+    expect(resolvedRepo.featureBranchPattern).toBe("codex/<feature-name>");
     expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^dm\\/.+$"]);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
   });
 
   it("gives repo-local policy precedence over global config for the same repository", async () => {
