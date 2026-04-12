@@ -215,7 +215,9 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       canonicalPath,
       worktreePath: canonicalPath,
       allowedBranchPatterns,
-      featureBranchPattern: resolveFeatureBranchPattern(repo.feature_branch_pattern ?? config.defaults?.feature_branch_pattern),
+      featureBranchPattern: resolveFeatureBranchPattern(
+        repo.feature_branch_pattern ?? config.defaults?.feature_branch_pattern,
+      ),
       gitWorktreeBasePath,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,

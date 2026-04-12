@@ -190,7 +190,7 @@ describe("loadConfig", () => {
     await fs.writeFile(
       configPath,
       [
-        "always_allowed_branch_patterns:",
+        'always_allowed_branch_patterns:',
         '  - "^<user>/.+$"',
         "repositories:",
         `  - path: ${repoDir}`,
