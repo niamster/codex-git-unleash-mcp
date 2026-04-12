@@ -118,7 +118,7 @@ describe("gitWorktreeAdd", () => {
         },
         {
           path: "/tmp/git-mcp-disallowed-worktree",
-          newBranch: "dm/disallowed",
+          newBranch: "owner/disallowed",
         },
       ),
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);

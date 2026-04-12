@@ -46,7 +46,9 @@ npm install
 
 Use a config file at `~/.config/codex-git-unleash-mcp.yaml`.
 
-If that file does not exist yet, the server still starts and exposes the full tool surface. `config_bootstrap` and `config_upsert_repo` can create or update the YAML, and the runtime Git/GitHub tools will pick up the changed config on the next tool call.
+If that file does not exist yet, the server still starts and exposes the full tool surface. Global config is optional at runtime: repositories can also be authorized through a fixed repo-local policy file at `.git-unleash.yaml`.
+
+`config_bootstrap` and `config_upsert_repo` can still create or update the YAML when you want an external allowlist.
 
 Example:
 
@@ -97,16 +99,41 @@ Notes:
 - when `branching_policies` contains multiple values, any matching setup flow is allowed
 - branch patterns are full-match regexes against the current branch name
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry, inherited `defaults`, or `always_allowed_branch_patterns`
-- `git_repo_policy` returns the configured branch patterns and related repository defaults for an allowlisted repository, including `feature_branch_pattern`, `git_worktree_base_path`, and `branching_policies` when configured
+- `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, `branching_policies`, the policy source, and the repo-local config path when applicable
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
-- `git_fetch` only requires the repository to be allowlisted, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
+- `git_fetch` only requires the repository to be authorized, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_worktree_add` requires an explicit absolute target path, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `branching_policies` is unset or includes `worktree`
 - when `git_worktree_base_path` is configured, `git_worktree_add.path` must resolve under that base path
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
 - `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`, and is only allowed when `branching_policies` is unset or includes `feature_branch`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
 - branch creation and PR base resolution prefer the remote HEAD branch and fall back to GitHub default-branch detection when needed
-- `git_status` only requires the repository to be allowlisted
+- `git_status` only requires the repository to be authorized
+
+### Repo-Local Policy
+
+Repositories can opt into zero-setup authorization with a fixed repo-local file at `.git-unleash.yaml` in the repository root.
+
+Example:
+
+```yaml
+allowed_branch_patterns:
+  - "^<user>/.*$"
+feature_branch_pattern: "<user>/<feature-name>"
+git_worktree_base_path: .worktrees
+branching_policies:
+  - worktree
+```
+
+Repo-local policy rules:
+
+- `.git-unleash.yaml` takes precedence over global config for the same repository
+- global config still works as a fallback when a repository does not define `.git-unleash.yaml`
+- for repo-local policy, `git_worktree_base_path` may be relative to the repository root
+- repo-local policy must not set `default_remote`
+- runtime tools fetch the trusted base branch of the current repository instance, compare the repo-local policy in base, index, and working tree, and fail closed on any divergence
+- in a fork, the fork's own base branch is authoritative for repo-local policy
+- this prevents locally widened repo-local policy from being used for MCP operations
 
 ## Workflow Summary
 
@@ -114,14 +141,15 @@ The intended happy path is:
 
 1. If the config file does not exist yet, call `config_bootstrap` to create it.
 2. Call `config_upsert_repo` to add or update an allowlisted repository entry when needed.
-3. Call `git_repo_policy` or `git_status` to inspect the allowlisted repository.
-4. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
-5. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
-6. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path.
-7. Call `git_add` with explicit repository-relative paths.
-8. Call `git_commit` with a normal commit message.
-9. Call `git_push` to push the current branch to the resolved remote.
-10. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
+3. Or check in `.git-unleash.yaml` to authorize the repository through repo-local policy instead of the global YAML.
+4. Call `git_repo_policy` or `git_status` to inspect the authorized repository.
+5. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
+6. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
+7. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path.
+8. Call `git_add` with explicit repository-relative paths.
+9. Call `git_commit` with a normal commit message.
+10. Call `git_push` to push the current branch to the resolved remote.
+11. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
 
 Each step stays inside a fixed policy boundary. There is no arbitrary checkout, no arbitrary push refspec, no amend flow, and no non-draft PR creation.
 
@@ -139,7 +167,7 @@ You can also provide the config path through `GIT_UNLEASH_MCP_CONFIG`:
 GIT_UNLEASH_MCP_CONFIG=~/.config/codex-git-unleash-mcp.yaml npm run dev
 ```
 
-If the config path points to a file that does not exist yet, the server still starts. Runtime tools that need an allowlist will fail with a config guidance error until you create or update the YAML, and they will pick up the file on the next tool call.
+If the config path points to a file that does not exist yet, the server still starts. Runtime tools can still operate on repositories that are authorized through `.git-unleash.yaml`; otherwise they behave as unauthorized until you create or update the global YAML.
 
 ## Build
 
@@ -199,9 +227,9 @@ Once registered, Codex should be able to use:
 
 - `config_bootstrap` to create the initial YAML config file when it does not exist yet; it writes a minimal valid config and the runtime tool handlers will see it on their next call
 - `config_upsert_repo` to add or update one repository entry in the YAML config; it validates the resulting file against the existing schema, matches existing repos by canonical path, and the runtime tool handlers will see the updated policy on their next call
-- `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, suggested feature-branch pattern, configured worktree base path, default remote, and draft-PR setting for an allowlisted repository
-- `git_status` for an allowlisted repository
-- `git_add` for repository-relative paths inside an allowlisted repository; it rejects absolute paths and repository-escaping paths like `../x`
+- `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, suggested feature-branch pattern, configured worktree base path, default remote, draft-PR setting, and policy source for an authorized repository
+- `git_status` for an authorized repository
+- `git_add` for repository-relative paths inside an authorized repository; it rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
 - `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and uses an explicit branch when provided or the detected base branch otherwise
 - `git_worktree_add` to create a linked worktree for a new allowed branch at an explicit absolute path; it fetches the explicit or detected base branch first, does not allow arbitrary refs, and enforces `git_worktree_base_path` when configured
@@ -212,7 +240,7 @@ Once registered, Codex should be able to use:
 
 Mutating tools reject detached HEAD.
 
-When the config file is missing, runtime tools remain registered but fail with a guidance error until the config is created. Once the YAML exists, the next tool call reloads it from disk.
+When the global config file is missing, runtime tools remain registered. They can still authorize repositories through `.git-unleash.yaml`, and once the YAML exists, the next tool call reloads it from disk.
 
 ## Remote And Base Resolution
 
@@ -234,7 +262,7 @@ defaults:
     - "^main$"
 
 always_allowed_branch_patterns:
-  - "^user/.*$"
+  - "^<user>/.*$"
 
 repositories:
   - path: ~/projects/codex-git-unleash-mcp

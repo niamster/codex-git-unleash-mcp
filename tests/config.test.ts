@@ -441,17 +441,17 @@ describe("bootstrapConfig", () => {
     tempPaths.push(configPath);
 
     const result = await bootstrapConfig(configPath, {
-      feature_branch_pattern: "dm/<feature-name>",
-      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      feature_branch_pattern: "owner/<feature-name>",
+      always_allowed_branch_patterns: ["^owner\\/.*$"],
       allow_draft_prs: true,
     });
 
     expect(result).toEqual({
       defaults: {
-        feature_branch_pattern: "dm/<feature-name>",
+        feature_branch_pattern: "owner/<feature-name>",
         allow_draft_prs: true,
       },
-      always_allowed_branch_patterns: ["^dm\\/.*$"],
+      always_allowed_branch_patterns: ["^owner\\/.*$"],
       repositories: [],
     });
 
@@ -477,7 +477,7 @@ describe("upsertRepoConfig", () => {
 
     const result = await upsertRepoConfig(configPath, {
       repo_path: repoDir,
-      allowed_branch_patterns: ["^dm\\/.*$"],
+      allowed_branch_patterns: ["^owner\\/.*$"],
       branching_policies: ["worktree"],
     });
 
@@ -485,7 +485,7 @@ describe("upsertRepoConfig", () => {
       action: "created",
       repo: {
         path: repoDir,
-        allowed_branch_patterns: ["^dm\\/.*$"],
+        allowed_branch_patterns: ["^owner\\/.*$"],
         branching_policies: ["worktree"],
       },
     });
@@ -511,7 +511,7 @@ describe("upsertRepoConfig", () => {
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
-        '      - "^dm\\/.*$"',
+        '      - "^owner\\/.*$"',
       ].join("\n"),
       "utf8",
     );
@@ -526,7 +526,7 @@ describe("upsertRepoConfig", () => {
       action: "updated",
       repo: {
         path: repoDir,
-        allowed_branch_patterns: ["^dm/.*$"],
+        allowed_branch_patterns: ["^owner/.*$"],
         default_remote: "origin",
         branching_policies: ["worktree"],
       },

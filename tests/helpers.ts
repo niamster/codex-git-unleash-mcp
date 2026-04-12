@@ -19,6 +19,7 @@ export async function createTempGitRepo(): Promise<{ repoDir: string; repo: Repo
       worktreePath: await fs.realpath(repoDir),
       allowedBranchPatterns: [/^.*$/],
       allowDraftPrs: true,
+      policySource: "global",
     },
   };
 }

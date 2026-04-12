@@ -12,6 +12,13 @@ export class RepoNotAllowedError extends Error {
   }
 }
 
+export class RepoLocalPolicyNotTrustedError extends Error {
+  constructor(repoPath: string, configPath: string, reason: string) {
+    super(`repo-local policy '${configPath}' for repository '${repoPath}' is not trusted: ${reason}`);
+    this.name = "RepoLocalPolicyNotTrustedError";
+  }
+}
+
 export class BranchNotAllowedError extends Error {
   constructor(branch: string, repoPath: string) {
     super(

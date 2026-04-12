@@ -6,6 +6,8 @@ This document translates [SPEC.md](./SPEC.md) into a concrete implementation app
 
 The goal is to build a local MCP server that exposes a narrow, structured set of Git and GitHub operations that Codex can call without repeated shell approval prompts, while keeping the trust boundary explicit and small.
 
+When repo-local policy is used, the trust anchor should be the trusted base branch of the current repository instance rather than the mutable working-tree copy of the file. In a fork, that means the fork's own base branch.
+
 ## Chosen Defaults
 
 These choices are intentionally opinionated so implementation can start without reopening the same design questions.
@@ -16,6 +18,7 @@ These choices are intentionally opinionated so implementation can start without 
 - GitHub integration: use `gh` CLI first rather than direct API calls
 - config format: YAML
 - config location for initial version: local config file provided at server startup
+- optional repo-local policy file: `.git-unleash.yaml` at repository root
 - `git_status` authorization: repository allowlist required, branch match not required
 - empty commits: denied
 - PR creation mode: draft only

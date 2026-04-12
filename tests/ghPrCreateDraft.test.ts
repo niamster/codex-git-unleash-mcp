@@ -32,6 +32,7 @@ const repo: RepoPolicy = {
   worktreePath: "/tmp/repo",
   allowedBranchPatterns: [/^user\/.*$/],
   allowDraftPrs: true,
+  policySource: "global",
 };
 
 afterEach(() => {
