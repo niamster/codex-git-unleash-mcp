@@ -230,11 +230,15 @@ function resolveBranchingPolicies(
 }
 
 function resolveFeatureBranchPattern(pattern: string | undefined): string | undefined {
-  if (!pattern?.includes("<user>")) {
-    return pattern;
+  return resolveUserPlaceholder(pattern);
+}
+
+function resolveUserPlaceholder(value: string | undefined): string | undefined {
+  if (!value?.includes("<user>")) {
+    return value;
   }
 
-  return pattern.replaceAll("<user>", resolveRuntimeUsername());
+  return value.replaceAll("<user>", resolveRuntimeUsername());
 }
 
 function resolveRuntimeUsername(): string {
@@ -252,7 +256,7 @@ function resolveRuntimeUsername(): string {
     // Ignore lookup failures and fall through to a config error below.
   }
 
-  throw new ConfigError("feature_branch_pattern uses '<user>' but no runtime username could be determined");
+  throw new ConfigError("config uses '<user>' but no runtime username could be determined");
 }
 
 function firstNonEmptyValue(...values: Array<string | undefined>): string | undefined {
@@ -345,11 +349,13 @@ async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
 
 function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
   return patterns.map((pattern) => {
+    const resolvedPattern = resolveUserPlaceholder(pattern) ?? pattern;
+
     try {
-      return new RegExp(pattern);
+      return new RegExp(resolvedPattern);
     } catch (error) {
       throw new ConfigError(
-        `invalid branch regex '${pattern}' for repository '${repoPath}': ${
+        `invalid branch regex '${resolvedPattern}' for repository '${repoPath}': ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

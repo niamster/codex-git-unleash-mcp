@@ -99,6 +99,30 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.featureBranchPattern).toBe("codex/<feature-name>");
   });
 
+  it("resolves <user> in inherited allowed branch patterns from USER", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-user-allowed-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-user-allowed-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^<user>/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+  });
+
   it("falls back to USERNAME before os.userInfo for <user> resolution", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-username-pattern-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-username-pattern.yaml`);
@@ -156,7 +180,30 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.featureBranchPattern).toBe("system-user/<feature-name>");
   });
 
-  it("rejects <user> feature branch patterns when no runtime username can be determined", async () => {
+  it("resolves <user> in always-allowed branch patterns", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-user-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-user-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "codex");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        'always_allowed_branch_patterns:',
+        '  - "^<user>/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+  });
+
+  it("rejects <user> config values when no runtime username can be determined", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-missing-user-pattern-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-missing-user-pattern.yaml`);
     tempPaths.push(repoDir, configPath);
@@ -172,15 +219,13 @@ describe("loadConfig", () => {
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
-        '      - "^feature/.+$"',
+        '      - "^<user>/.+$"',
         '    feature_branch_pattern: "<user>/<feature-name>"',
       ].join("\n"),
       "utf8",
     );
 
-    await expect(loadConfig(configPath)).rejects.toThrow(
-      "feature_branch_pattern uses '<user>' but no runtime username could be determined",
-    );
+    await expect(loadConfig(configPath)).rejects.toThrow("config uses '<user>' but no runtime username could be determined");
   });
 
   it("appends always-allowed branch patterns to repository policy", async () => {
