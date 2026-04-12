@@ -75,9 +75,11 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
   const canonicalRepoRoot = await fs.realpath(repoRoot);
   const configPath = path.join(canonicalRepoRoot, REPO_LOCAL_CONFIG_FILENAME);
 
-  let raw: string;
   try {
-    raw = await fs.readFile(configPath, "utf8");
+    const stats = await fs.lstat(configPath);
+    if (stats.isSymbolicLink()) {
+      throw new ConfigError(`repo-local config '${configPath}' must not be a symbolic link`);
+    }
   } catch (error) {
     if (isFileNotFoundError(error)) {
       return undefined;
@@ -85,6 +87,8 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
 
     throw error;
   }
+
+  const raw = await fs.readFile(configPath, "utf8");
 
   let parsed: z.infer<typeof repoLocalPolicySchema>;
   try {

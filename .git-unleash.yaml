@@ -1,3 +1,5 @@
+allowed_branch_patterns:
+  - "^dm/.*$"
 allow_draft_prs: true
 git_worktree_base_path: .worktrees
 branching_policies:

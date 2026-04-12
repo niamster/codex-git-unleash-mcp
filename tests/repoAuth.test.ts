@@ -139,4 +139,23 @@ describe("resolveAllowedRepo", () => {
       new ConfigError(`repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must not set default_remote`),
     );
   });
+
+  it("rejects repo-local config when the config path is a symbolic link", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, "policy-target.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^user/.+$"',
+      ].join("\n"),
+      "utf8",
+    );
+    await fs.symlink("policy-target.yaml", path.join(repoDir, ".git-unleash.yaml"));
+
+    await expect(resolveAllowedRepo({ repositories: [] }, repoDir)).rejects.toEqual(
+      new ConfigError(`repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must not be a symbolic link`),
+    );
+  });
 });
