@@ -95,6 +95,10 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
     );
   }
 
+  if (parsed.default_remote !== undefined) {
+    throw new ConfigError(`repo-local config '${configPath}' must not set default_remote`);
+  }
+
   return {
     path: canonicalRepoRoot,
     canonicalPath: canonicalRepoRoot,
@@ -102,7 +106,6 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
     allowedBranchPatterns: compileBranchPatterns(parsed.allowed_branch_patterns, canonicalRepoRoot),
     featureBranchPattern: parsed.feature_branch_pattern,
     gitWorktreeBasePath: await resolveGitWorktreeBasePath(parsed.git_worktree_base_path, { repoRoot: canonicalRepoRoot }),
-    defaultRemote: parsed.default_remote,
     allowDraftPrs: parsed.allow_draft_prs ?? true,
     branchingPolicies: parsed.branching_policies,
     policySource: "repo_local",

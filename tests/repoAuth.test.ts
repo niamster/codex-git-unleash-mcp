@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { resolveAllowedRepo } from "../src/auth/repoAuth.js";
-import { RepoNotAllowedError } from "../src/errors.js";
+import { ConfigError, RepoNotAllowedError } from "../src/errors.js";
 import { runCommand } from "../src/exec/run.js";
 import type { Config } from "../src/types/config.js";
 import { configureTestGitRepo, createLinkedWorktree, createTempGitRepo } from "./helpers.js";
@@ -119,5 +119,24 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.policySource).toBe("repo_local");
     expect(resolvedRepo.featureBranchPattern).toBe("user/<feature-name>");
     expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+  });
+
+  it("rejects repo-local config that sets default_remote", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^user/.+$"',
+        "default_remote: upstream",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(resolveAllowedRepo({ repositories: [] }, repoDir)).rejects.toEqual(
+      new ConfigError(`repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must not set default_remote`),
+    );
   });
 });
