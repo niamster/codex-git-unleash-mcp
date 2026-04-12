@@ -117,8 +117,8 @@ Example:
 
 ```yaml
 allowed_branch_patterns:
-  - "^dm/.*$"
-feature_branch_pattern: "dm/<feature-name>"
+  - "^user/.*$"
+feature_branch_pattern: "user/<feature-name>"
 git_worktree_base_path: .worktrees
 branching_policies:
   - worktree
@@ -126,8 +126,8 @@ branching_policies:
 
 Repo-local policy rules:
 
-- global config still works and takes precedence when the repository is explicitly allowlisted there
-- `.git-unleash.yaml` is only used as a fallback when the repository is not globally allowlisted
+- `.git-unleash.yaml` takes precedence over global config for the same repository
+- global config still works as a fallback when a repository does not define `.git-unleash.yaml`
 - for repo-local policy, `git_worktree_base_path` may be relative to the repository root
 - runtime tools fetch the trusted base branch, compare the repo-local policy in base, index, and working tree, and fail closed on any divergence
 - this prevents locally widened repo-local policy from being used for MCP operations

@@ -13,6 +13,14 @@ export async function resolveAllowedRepo(config: Config, repoPath: string): Prom
     throw new RepoNotAllowedError(absolutePath);
   }
 
+  const repoLocalPolicy = await loadRepoLocalPolicy(resolvedRepo.topLevel);
+  if (repoLocalPolicy) {
+    return {
+      ...repoLocalPolicy,
+      worktreePath: resolvedRepo.topLevel,
+    };
+  }
+
   const repo = await findMatchingRepo(config, resolvedRepo.commonDir);
   if (repo) {
     return {
@@ -21,15 +29,7 @@ export async function resolveAllowedRepo(config: Config, repoPath: string): Prom
     };
   }
 
-  const repoLocalPolicy = await loadRepoLocalPolicy(resolvedRepo.topLevel);
-  if (!repoLocalPolicy) {
-    throw new RepoNotAllowedError(absolutePath);
-  }
-
-  return {
-    ...repoLocalPolicy,
-    worktreePath: resolvedRepo.topLevel,
-  };
+  throw new RepoNotAllowedError(absolutePath);
 }
 
 async function findMatchingRepo(config: Config, commonDir: string): Promise<RepoPolicy | undefined> {
