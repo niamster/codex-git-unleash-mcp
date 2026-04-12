@@ -121,7 +121,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
     },
     async ({ repo_path }) => {
-      const repo = await resolveRuntimeRepo(configPath, repo_path);
+      const repo = await resolveRuntimeRepo(configPath, repo_path, { requireTrustedRepoPolicy: false });
       const result = getGitRepoPolicy(repo);
 
       return {
@@ -142,7 +142,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
     },
     async ({ repo_path }) => {
-      const repo = await resolveRuntimeRepo(configPath, repo_path);
+      const repo = await resolveRuntimeRepo(configPath, repo_path, { requireTrustedRepoPolicy: false });
       const status = await getGitStatus(repo);
 
       return {
@@ -343,9 +343,15 @@ export function createServer(configPath: string): McpServer {
   return server;
 }
 
-async function resolveRuntimeRepo(configPath: string, repoPath: string) {
+async function resolveRuntimeRepo(
+  configPath: string,
+  repoPath: string,
+  options: { requireTrustedRepoPolicy?: boolean } = {},
+) {
   const config = await loadRuntimeConfig(configPath);
   const repo = await resolveAllowedRepo(config, repoPath);
-  await requireTrustedRepoPolicy(repo);
+  if (options.requireTrustedRepoPolicy ?? true) {
+    await requireTrustedRepoPolicy(repo);
+  }
   return repo;
 }
