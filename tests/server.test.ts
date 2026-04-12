@@ -4,7 +4,6 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ConfigError } from "../src/errors.js";
 import { getRegisteredToolNames, loadRuntimeConfig } from "../src/server.js";
 
 const tempPaths: string[] = [];
@@ -68,14 +67,10 @@ describe("loadRuntimeConfig", () => {
     expect(secondConfig.repositories[0]?.defaultRemote).toBe("upstream");
   });
 
-  it("raises a config error with bootstrap guidance when the file is missing", async () => {
+  it("returns an empty config when the global config file is missing", async () => {
     const configPath = path.join(os.tmpdir(), `git-mcp-runtime-missing-${Date.now()}.yaml`);
     tempPaths.push(configPath);
 
-    await expect(loadRuntimeConfig(configPath)).rejects.toEqual(
-      new ConfigError(
-        `config file '${configPath}' does not exist; call 'config_bootstrap' to create it or 'config_upsert_repo' to create it with a repository entry`,
-      ),
-    );
+    await expect(loadRuntimeConfig(configPath)).resolves.toEqual({ repositories: [] });
   });
 });

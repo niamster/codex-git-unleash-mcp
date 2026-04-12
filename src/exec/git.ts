@@ -46,6 +46,10 @@ export function gitRemoteHeadArgs(remote: string): string[] {
   return ["ls-remote", "--symref", remote, "HEAD"];
 }
 
+export function gitRevParseVerifyArgs(spec: string): string[] {
+  return ["rev-parse", "--verify", spec];
+}
+
 export async function getGitTopLevel(cwd: string): Promise<string> {
   const result = await runCommand({
     cwd,
@@ -228,6 +232,33 @@ export async function getHeadCommit(cwd: string): Promise<{ oid: string; summary
 
   const [oid = "", summary = ""] = result.stdout.trimEnd().split("\n");
   return { oid, summary };
+}
+
+export async function getVerifiedObjectId(cwd: string, spec: string): Promise<string> {
+  const result = await runCommand({
+    cwd,
+    command: "git",
+    argv: gitRevParseVerifyArgs(spec),
+  });
+
+  return result.stdout.trim();
+}
+
+export async function hasWorkingTreeChanges(cwd: string, repoRelativePath: string): Promise<boolean> {
+  try {
+    await runCommand({
+      cwd,
+      command: "git",
+      argv: ["diff", "--quiet", "--", repoRelativePath],
+    });
+    return false;
+  } catch (error) {
+    if (error instanceof Error && "exitCode" in error && error.exitCode === 1) {
+      return true;
+    }
+
+    throw error;
+  }
 }
 
 async function resolveGitPath(cwd: string, gitPath: string): Promise<string> {

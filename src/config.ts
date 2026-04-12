@@ -8,6 +8,8 @@ import { z } from "zod";
 import { ConfigError } from "./errors.js";
 import type { BranchingPolicy, Config, RepoPolicy } from "./types/config.js";
 
+export const REPO_LOCAL_CONFIG_FILENAME = ".git-unleash.yaml";
+
 const branchingPolicySchema = z.enum(["worktree", "feature_branch", "current_branch"]);
 const branchingPoliciesSchema = z.array(branchingPolicySchema).nonempty();
 
@@ -22,6 +24,15 @@ const policyDefaultsSchema = z.object({
 
 const repoPolicySchema = policyDefaultsSchema.extend({
   path: z.string().min(1),
+});
+
+const repoLocalPolicySchema = z.object({
+  allowed_branch_patterns: z.array(z.string().min(1)).nonempty(),
+  feature_branch_pattern: z.string().min(1).optional(),
+  git_worktree_base_path: z.string().min(1).optional(),
+  default_remote: z.string().min(1).optional(),
+  allow_draft_prs: z.boolean().optional(),
+  branching_policies: branchingPoliciesSchema.optional(),
 });
 
 const configSchema = z.object({
@@ -58,6 +69,46 @@ export async function loadOptionalConfig(configPath: string): Promise<Config | u
 
     throw error;
   }
+}
+
+export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy | undefined> {
+  const canonicalRepoRoot = await fs.realpath(repoRoot);
+  const configPath = path.join(canonicalRepoRoot, REPO_LOCAL_CONFIG_FILENAME);
+
+  let raw: string;
+  try {
+    raw = await fs.readFile(configPath, "utf8");
+  } catch (error) {
+    if (isFileNotFoundError(error)) {
+      return undefined;
+    }
+
+    throw error;
+  }
+
+  let parsed: z.infer<typeof repoLocalPolicySchema>;
+  try {
+    parsed = repoLocalPolicySchema.parse(parseYaml(raw));
+  } catch (error) {
+    throw new ConfigError(
+      `repo-local config '${configPath}' is invalid: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  return {
+    path: canonicalRepoRoot,
+    canonicalPath: canonicalRepoRoot,
+    worktreePath: canonicalRepoRoot,
+    allowedBranchPatterns: compileBranchPatterns(parsed.allowed_branch_patterns, canonicalRepoRoot),
+    featureBranchPattern: parsed.feature_branch_pattern,
+    gitWorktreeBasePath: await resolveGitWorktreeBasePath(parsed.git_worktree_base_path, { repoRoot: canonicalRepoRoot }),
+    defaultRemote: parsed.default_remote,
+    allowDraftPrs: parsed.allow_draft_prs ?? true,
+    branchingPolicies: parsed.branching_policies,
+    policySource: "repo_local",
+    repoLocalConfigPath: configPath,
+    repoLocalConfigRelativePath: REPO_LOCAL_CONFIG_FILENAME,
+  };
 }
 
 export async function bootstrapConfig(configPath: string, input: BootstrapConfigInput): Promise<EditableConfig> {
@@ -162,6 +213,7 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
       branchingPolicies: resolveBranchingPolicies(repo.branching_policies, config.defaults?.branching_policies),
+      policySource: "global",
     });
 
     seenPaths.add(canonicalPath);
@@ -271,13 +323,20 @@ async function findRepoIndexByCanonicalPath(repositories: EditableRepoPolicy[], 
   return -1;
 }
 
-async function resolveGitWorktreeBasePath(inputPath: string | undefined): Promise<string | undefined> {
+async function resolveGitWorktreeBasePath(
+  inputPath: string | undefined,
+  options: { repoRoot?: string } = {},
+): Promise<string | undefined> {
   if (!inputPath) {
     return undefined;
   }
 
   const expandedPath = expandHomeDir(inputPath);
   if (!path.isAbsolute(expandedPath)) {
+    if (options.repoRoot) {
+      return await canonicalizeProspectivePath(path.resolve(options.repoRoot, expandedPath));
+    }
+
     throw new ConfigError(`git_worktree_base_path '${inputPath}' must be absolute or start with '~/'`);
   }
 

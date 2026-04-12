@@ -15,6 +15,7 @@ describe("getGitRepoPolicy", () => {
       defaultRemote: "origin",
       allowDraftPrs: true,
       branchingPolicies: ["current_branch", "feature_branch"],
+      policySource: "global",
     };
 
     expect(getGitRepoPolicy(repo)).toEqual({
@@ -26,6 +27,8 @@ describe("getGitRepoPolicy", () => {
       defaultRemote: "origin",
       allowDraftPrs: true,
       branchingPolicies: ["current_branch", "feature_branch"],
+      policySource: "global",
+      repoLocalConfigPath: undefined,
     });
   });
 });

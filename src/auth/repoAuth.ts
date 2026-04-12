@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { loadRepoLocalPolicy } from "../config.js";
 import { RepoNotAllowedError } from "../errors.js";
 import { getGitCommonDir, getGitTopLevel } from "../exec/git.js";
 import type { Config, RepoPolicy } from "../types/config.js";
@@ -12,15 +13,23 @@ export async function resolveAllowedRepo(config: Config, repoPath: string): Prom
     throw new RepoNotAllowedError(absolutePath);
   }
 
-  const repo = await findMatchingRepo(config, resolvedRepo.commonDir);
-  if (!repo) {
-    throw new RepoNotAllowedError(absolutePath);
+  const repoLocalPolicy = await loadRepoLocalPolicy(resolvedRepo.topLevel);
+  if (repoLocalPolicy) {
+    return {
+      ...repoLocalPolicy,
+      worktreePath: resolvedRepo.topLevel,
+    };
   }
 
-  return {
-    ...repo,
-    worktreePath: resolvedRepo.topLevel,
-  };
+  const repo = await findMatchingRepo(config, resolvedRepo.commonDir);
+  if (repo) {
+    return {
+      ...repo,
+      worktreePath: resolvedRepo.topLevel,
+    };
+  }
+
+  throw new RepoNotAllowedError(absolutePath);
 }
 
 async function findMatchingRepo(config: Config, commonDir: string): Promise<RepoPolicy | undefined> {
