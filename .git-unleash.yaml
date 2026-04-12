@@ -1,0 +1,3 @@
+allow_draft_prs: true
+branching_policies:
+  - worktree
