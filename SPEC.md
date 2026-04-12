@@ -51,7 +51,7 @@ Repository authorization rules:
 
 Initial implementations may enforce this by canonicalizing paths and requiring an exact match to a configured repository root, but the safety requirement is repository scoping, not a particular path-matching strategy.
 
-If repo-local policy is supported, the server must fail closed whenever the working tree or index copy of that policy differs from the trusted base-branch copy.
+If repo-local policy is supported, the server must fail closed whenever the working tree or index copy of that policy differs from the trusted base-branch copy for the current repository instance. In a fork, that means the fork's own base branch rather than an external upstream remote.
 
 ## Branch Authorization Model
 

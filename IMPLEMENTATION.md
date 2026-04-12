@@ -6,7 +6,7 @@ This document translates [SPEC.md](./SPEC.md) into a concrete implementation app
 
 The goal is to build a local MCP server that exposes a narrow, structured set of Git and GitHub operations that Codex can call without repeated shell approval prompts, while keeping the trust boundary explicit and small.
 
-When repo-local policy is used, the trust anchor should be the repository's trusted upstream state rather than the mutable working-tree copy of the file.
+When repo-local policy is used, the trust anchor should be the trusted base branch of the current repository instance rather than the mutable working-tree copy of the file. In a fork, that means the fork's own base branch.
 
 ## Chosen Defaults
 
