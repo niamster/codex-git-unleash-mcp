@@ -123,17 +123,56 @@ feature_branch_pattern: "<user>/<feature-name>"
 git_worktree_base_path: .worktrees
 branching_policies:
   - worktree
+allow_global_repo_overrides:
+  - feature_branch_pattern
 ```
 
 Repo-local policy rules:
 
-- `.git-unleash.yaml` takes precedence over global config for the same repository
+- `.git-unleash.yaml` is authoritative for the repository when it exists
 - global config still works as a fallback when a repository does not define `.git-unleash.yaml`
+- `allowed_branch_patterns` always come from `.git-unleash.yaml`; top-level `defaults` from the global config never override repo-local policy
+- `default_remote` is never inherited from the global config when `.git-unleash.yaml` is present
+- `allow_global_repo_overrides` is optional and may list `feature_branch_pattern`, `git_worktree_base_path`, `allow_draft_prs`, and `branching_policies`
+- `allow_global_repo_overrides` only applies values from the matching repository entry in the global config; inherited top-level `defaults` never override `.git-unleash.yaml`
 - for repo-local policy, `git_worktree_base_path` may be relative to the repository root
 - repo-local policy must not set `default_remote`
 - runtime tools fetch the trusted base branch of the current repository instance, compare the repo-local policy in base, index, and working tree, and fail closed on any divergence
 - in a fork, the fork's own base branch is authoritative for repo-local policy
 - this prevents locally widened repo-local policy from being used for MCP operations
+
+Example opt-in override from a matching global repository entry:
+
+Global config:
+
+```yaml
+defaults:
+  feature_branch_pattern: "defaults-do-not-win/<feature-name>"
+
+repositories:
+  - path: /Users/alice/project
+    feature_branch_pattern: "bob/<feature-name>"
+```
+
+Repo-local `.git-unleash.yaml`:
+
+```yaml
+allowed_branch_patterns:
+  - "^[a-zA-Z0-9.]/.*$"
+feature_branch_pattern: "<user>/<feature-name>"
+allow_global_repo_overrides:
+  - feature_branch_pattern
+```
+
+Effective policy:
+
+```yaml
+allowed_branch_patterns:
+  - "^[a-zA-Z0-9.]/.*$"
+feature_branch_pattern: "bob/<feature-name>"
+```
+
+In that example, the matching repository entry overrides `feature_branch_pattern`, while the global `defaults.feature_branch_pattern` is ignored because repo-local policy did not opt into defaults and defaults never override `.git-unleash.yaml`.
 
 ## Workflow Summary
 
