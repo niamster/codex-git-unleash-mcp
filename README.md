@@ -138,6 +138,17 @@ Repo-local policy rules:
 - in a fork, the fork's own base branch is authoritative for repo-local policy
 - this prevents locally widened repo-local policy from being used for MCP operations
 
+Example overlay on top of a globally allowlisted repository:
+
+```yaml
+feature_branch_pattern: "<user>/<feature-name>"
+git_worktree_base_path: .worktrees
+branching_policies:
+  - worktree
+```
+
+In that mode, `allowed_branch_patterns` still come from the global config.
+
 ## Workflow Summary
 
 The intended happy path is:
