@@ -181,6 +181,16 @@ Effective policy returned by `git_repo_policy`:
 
 In that mode, `allowed_branch_patterns` and other non-overridable fields still come from the global config.
 
+For example, this repo-local override is rejected because `allowed_branch_patterns` is not overridable for a globally allowlisted repository:
+
+```yaml
+feature_branch_pattern: "<user>/<feature-name>"
+allowed_branch_patterns:
+  - "^[a-zA-Z0-9.]/.*$"
+```
+
+The current implementation treats that as a configuration error instead of trying to merge or replace the global branch authorization rules.
+
 ## Workflow Summary
 
 The intended happy path is:
