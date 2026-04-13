@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { loadConfig } from "../src/config.js";
 import { resolveAllowedRepo } from "../src/auth/repoAuth.js";
 import { ConfigError, RepoNotAllowedError } from "../src/errors.js";
 import { runCommand } from "../src/exec/run.js";
@@ -88,7 +89,7 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
   });
 
-  it("gives repo-local policy precedence over global config for the same repository", async () => {
+  it("allows matching global repo entries to override opted-in repo-local fields", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
     const canonicalRepoDir = await fs.realpath(repoDir);
@@ -97,8 +98,17 @@ describe("resolveAllowedRepo", () => {
       path.join(repoDir, ".git-unleash.yaml"),
       [
         "allowed_branch_patterns:",
-        '  - "^user/.+$"',
-        'feature_branch_pattern: "user/<feature-name>"',
+        '  - "^owner/.+$"',
+        'feature_branch_pattern: "owner/<feature-name>"',
+        "git_worktree_base_path: .worktrees",
+        "allow_draft_prs: true",
+        "branching_policies:",
+        "  - worktree",
+        "allow_global_repo_overrides:",
+        "  - feature_branch_pattern",
+        "  - git_worktree_base_path",
+        "  - allow_draft_prs",
+        "  - branching_policies",
       ].join("\n"),
       "utf8",
     );
@@ -111,9 +121,18 @@ describe("resolveAllowedRepo", () => {
             canonicalPath: canonicalRepoDir,
             worktreePath: canonicalRepoDir,
             allowedBranchPatterns: [/^main$/],
-            featureBranchPattern: "main",
-            allowDraftPrs: true,
+            featureBranchPattern: "bob/<feature-name>",
+            gitWorktreeBasePath: "/tmp/global-worktrees",
+            defaultRemote: "origin",
+            allowDraftPrs: false,
+            branchingPolicies: ["current_branch"],
             policySource: "global",
+            globalRepoOverrides: {
+              featureBranchPattern: "bob/<feature-name>",
+              gitWorktreeBasePath: "/tmp/global-worktrees",
+              allowDraftPrs: false,
+              branchingPolicies: ["current_branch"],
+            },
           },
         ],
       },
@@ -121,8 +140,120 @@ describe("resolveAllowedRepo", () => {
     );
 
     expect(resolvedRepo.policySource).toBe("repo_local");
-    expect(resolvedRepo.featureBranchPattern).toBe("user/<feature-name>");
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+    expect(resolvedRepo.featureBranchPattern).toBe("bob/<feature-name>");
+    expect(resolvedRepo.gitWorktreeBasePath).toBe("/tmp/global-worktrees");
+    expect(resolvedRepo.allowDraftPrs).toBe(false);
+    expect(resolvedRepo.branchingPolicies).toEqual(["current_branch"]);
+    expect(resolvedRepo.defaultRemote).toBeUndefined();
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+  });
+
+  it("does not apply matching global repo entry values without repo-local opt-in", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+    const canonicalRepoDir = await fs.realpath(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^owner/.+$"',
+        'feature_branch_pattern: "owner/<feature-name>"',
+        "git_worktree_base_path: .worktrees",
+        "allow_draft_prs: true",
+        "branching_policies:",
+        "  - worktree",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const resolvedRepo = await resolveAllowedRepo(
+      {
+        repositories: [
+          {
+            path: repoDir,
+            canonicalPath: canonicalRepoDir,
+            worktreePath: canonicalRepoDir,
+            allowedBranchPatterns: [/^main$/],
+            featureBranchPattern: "bob/<feature-name>",
+            gitWorktreeBasePath: "/tmp/global-worktrees",
+            defaultRemote: "origin",
+            allowDraftPrs: false,
+            branchingPolicies: ["current_branch"],
+            policySource: "global",
+            globalRepoOverrides: {
+              featureBranchPattern: "bob/<feature-name>",
+              gitWorktreeBasePath: "/tmp/global-worktrees",
+              allowDraftPrs: false,
+              branchingPolicies: ["current_branch"],
+            },
+          },
+        ],
+      },
+      repoDir,
+    );
+
+    expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
+    expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
+    expect(resolvedRepo.allowDraftPrs).toBe(true);
+    expect(resolvedRepo.branchingPolicies).toEqual(["worktree"]);
+    expect(resolvedRepo.defaultRemote).toBeUndefined();
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+  });
+
+  it("does not let top-level defaults override repo-local policy", async () => {
+    const { repoDir } = await createTempGitRepo();
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-repo-local-defaults.yaml`);
+    tempPaths.push(repoDir, configPath);
+    const canonicalRepoDir = await fs.realpath(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^owner/.+$"',
+        'feature_branch_pattern: "owner/<feature-name>"',
+        "git_worktree_base_path: .worktrees",
+        "allow_draft_prs: true",
+        "branching_policies:",
+        "  - worktree",
+        "allow_global_repo_overrides:",
+        "  - feature_branch_pattern",
+        "  - git_worktree_base_path",
+        "  - allow_draft_prs",
+        "  - branching_policies",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^main$"',
+        '  feature_branch_pattern: "bob/<feature-name>"',
+        "  git_worktree_base_path: /tmp/default-worktrees",
+        "  default_remote: origin",
+        "  allow_draft_prs: false",
+        "  branching_policies:",
+        "    - current_branch",
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+    const resolvedRepo = await resolveAllowedRepo(config, repoDir);
+
+    expect(resolvedRepo.policySource).toBe("repo_local");
+    expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
+    expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
+    expect(resolvedRepo.allowDraftPrs).toBe(true);
+    expect(resolvedRepo.branchingPolicies).toEqual(["worktree"]);
+    expect(resolvedRepo.defaultRemote).toBeUndefined();
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
   });
 
   it("rejects repo-local config that sets default_remote", async () => {
