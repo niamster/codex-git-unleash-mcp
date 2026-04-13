@@ -88,7 +88,7 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
   });
 
-  it("gives repo-local policy precedence over global config for the same repository", async () => {
+  it("applies whitelisted repo-local overrides on top of global config for the same repository", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
     const canonicalRepoDir = await fs.realpath(repoDir);
@@ -96,9 +96,11 @@ describe("resolveAllowedRepo", () => {
     await fs.writeFile(
       path.join(repoDir, ".git-unleash.yaml"),
       [
-        "allowed_branch_patterns:",
-        '  - "^user/.+$"',
         'feature_branch_pattern: "user/<feature-name>"',
+        "git_worktree_base_path: .worktrees",
+        "allow_draft_prs: false",
+        "branching_policies:",
+        "  - worktree",
       ].join("\n"),
       "utf8",
     );
@@ -112,7 +114,10 @@ describe("resolveAllowedRepo", () => {
             worktreePath: canonicalRepoDir,
             allowedBranchPatterns: [/^main$/],
             featureBranchPattern: "main",
+            gitWorktreeBasePath: "/tmp/global-worktrees",
+            defaultRemote: "origin",
             allowDraftPrs: true,
+            branchingPolicies: ["feature_branch"],
             policySource: "global",
           },
         ],
@@ -122,7 +127,11 @@ describe("resolveAllowedRepo", () => {
 
     expect(resolvedRepo.policySource).toBe("repo_local");
     expect(resolvedRepo.featureBranchPattern).toBe("user/<feature-name>");
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+    expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
+    expect(resolvedRepo.defaultRemote).toBe("origin");
+    expect(resolvedRepo.allowDraftPrs).toBe(false);
+    expect(resolvedRepo.branchingPolicies).toEqual(["worktree"]);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^main$"]);
   });
 
   it("rejects repo-local config that sets default_remote", async () => {
@@ -141,6 +150,60 @@ describe("resolveAllowedRepo", () => {
 
     await expect(resolveAllowedRepo({ repositories: [] }, repoDir)).rejects.toEqual(
       new ConfigError(`repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must not set default_remote`),
+    );
+  });
+
+  it("rejects repo-local config without allowed_branch_patterns when the repository is not globally allowlisted", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      ['feature_branch_pattern: "user/<feature-name>"'].join("\n"),
+      "utf8",
+    );
+
+    await expect(resolveAllowedRepo({ repositories: [] }, repoDir)).rejects.toEqual(
+      new ConfigError(
+        `repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must set allowed_branch_patterns unless overriding a globally allowlisted repository`,
+      ),
+    );
+  });
+
+  it("rejects repo-local config that sets allowed_branch_patterns when overriding a globally allowlisted repository", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+    const canonicalRepoDir = await fs.realpath(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^user/.+$"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(
+      resolveAllowedRepo(
+        {
+          repositories: [
+            {
+              path: repoDir,
+              canonicalPath: canonicalRepoDir,
+              worktreePath: canonicalRepoDir,
+              allowedBranchPatterns: [/^main$/],
+              allowDraftPrs: true,
+              policySource: "global",
+            },
+          ],
+        },
+        repoDir,
+      ),
+    ).rejects.toEqual(
+      new ConfigError(
+        `repo-local config '${path.join(canonicalRepoDir, ".git-unleash.yaml")}' must not set allowed_branch_patterns when overriding a globally allowlisted repository`,
+      ),
     );
   });
 

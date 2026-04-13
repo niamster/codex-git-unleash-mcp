@@ -27,7 +27,7 @@ const repoPolicySchema = policyDefaultsSchema.extend({
 });
 
 const repoLocalPolicySchema = z.object({
-  allowed_branch_patterns: z.array(z.string().min(1)).nonempty(),
+  allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
   feature_branch_pattern: z.string().min(1).optional(),
   git_worktree_base_path: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
@@ -71,7 +71,7 @@ export async function loadOptionalConfig(configPath: string): Promise<Config | u
   }
 }
 
-export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy | undefined> {
+export async function loadRepoLocalPolicy(repoRoot: string, basePolicy?: RepoPolicy): Promise<RepoPolicy | undefined> {
   const canonicalRepoRoot = await fs.realpath(repoRoot);
   const configPath = path.join(canonicalRepoRoot, REPO_LOCAL_CONFIG_FILENAME);
 
@@ -101,6 +101,33 @@ export async function loadRepoLocalPolicy(repoRoot: string): Promise<RepoPolicy 
 
   if (parsed.default_remote !== undefined) {
     throw new ConfigError(`repo-local config '${configPath}' must not set default_remote`);
+  }
+
+  if (basePolicy) {
+    if (parsed.allowed_branch_patterns !== undefined) {
+      throw new ConfigError(
+        `repo-local config '${configPath}' must not set allowed_branch_patterns when overriding a globally allowlisted repository`,
+      );
+    }
+
+    return {
+      ...basePolicy,
+      featureBranchPattern: resolveFeatureBranchPattern(parsed.feature_branch_pattern) ?? basePolicy.featureBranchPattern,
+      gitWorktreeBasePath:
+        (await resolveGitWorktreeBasePath(parsed.git_worktree_base_path, { repoRoot: canonicalRepoRoot })) ??
+        basePolicy.gitWorktreeBasePath,
+      allowDraftPrs: parsed.allow_draft_prs ?? basePolicy.allowDraftPrs,
+      branchingPolicies: parsed.branching_policies ?? basePolicy.branchingPolicies,
+      policySource: "repo_local",
+      repoLocalConfigPath: configPath,
+      repoLocalConfigRelativePath: REPO_LOCAL_CONFIG_FILENAME,
+    };
+  }
+
+  if (parsed.allowed_branch_patterns === undefined) {
+    throw new ConfigError(
+      `repo-local config '${configPath}' must set allowed_branch_patterns unless overriding a globally allowlisted repository`,
+    );
   }
 
   return {
