@@ -140,6 +140,21 @@ Repo-local policy rules:
 
 Example overlay on top of a globally allowlisted repository:
 
+Global config:
+
+```yaml
+repositories:
+  - path: /Users/alice/project
+    allowed_branch_patterns:
+      - "^alice/.*$"
+    feature_branch_pattern: "alice/<feature-name>"
+    allow_draft_prs: true
+    branching_policies:
+      - feature_branch
+```
+
+Repo-local `.git-unleash.yaml`:
+
 ```yaml
 feature_branch_pattern: "<user>/<feature-name>"
 git_worktree_base_path: .worktrees
@@ -147,7 +162,24 @@ branching_policies:
   - worktree
 ```
 
-In that mode, `allowed_branch_patterns` still come from the global config.
+Effective policy returned by `git_repo_policy`:
+
+```json
+{
+  "allowedBranchPatterns": [
+    "^alice/.*$"
+  ],
+  "featureBranchPattern": "alice/<feature-name>",
+  "gitWorktreeBasePath": "/Users/alice/project/.worktrees",
+  "allowDraftPrs": true,
+  "branchingPolicies": [
+    "worktree"
+  ],
+  "policySource": "repo_local"
+}
+```
+
+In that mode, `allowed_branch_patterns` and other non-overridable fields still come from the global config.
 
 ## Workflow Summary
 
