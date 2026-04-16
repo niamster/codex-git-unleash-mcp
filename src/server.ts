@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { bootstrapConfig, loadOptionalConfig, upsertRepoConfig } from "./config.js";
@@ -26,6 +27,24 @@ const configPolicyFields = {
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
   branching_policies: branchingPoliciesSchema.optional(),
+};
+
+const CLOSED_WORLD_READ_ONLY_TOOL: ToolAnnotations = {
+  readOnlyHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const CLOSED_WORLD_ADDITIVE_MUTATION_TOOL: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  openWorldHint: false,
+};
+
+const CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  openWorldHint: false,
 };
 
 export function getRegisteredToolNames(): string[] {
@@ -69,6 +88,7 @@ export function createServer(configPath: string): McpServer {
       ...configPolicyFields,
       always_allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
     },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async (input) => {
       const nextConfig = await bootstrapConfig(configPath, input);
 
@@ -98,6 +118,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
       ...configPolicyFields,
     },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async (input) => {
       const result = await upsertRepoConfig(configPath, input);
 
@@ -127,6 +148,7 @@ export function createServer(configPath: string): McpServer {
     {
       repo_path: z.string().min(1),
     },
+    CLOSED_WORLD_READ_ONLY_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path, { requireTrustedRepoPolicy: false });
       const result = getGitRepoPolicy(repo);
@@ -148,6 +170,7 @@ export function createServer(configPath: string): McpServer {
     {
       repo_path: z.string().min(1),
     },
+    CLOSED_WORLD_READ_ONLY_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path, { requireTrustedRepoPolicy: false });
       const status = await getGitStatus(repo);
@@ -170,6 +193,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
       paths: z.array(z.string().min(1)).min(1),
     },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, paths }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       await requireAllowedBranch(repo);
@@ -193,6 +217,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
       message: z.string(),
     },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, message }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       await requireAllowedBranch(repo);
@@ -217,6 +242,7 @@ export function createServer(configPath: string): McpServer {
       new_branch: z.string(),
       branch: z.string().min(1).optional(),
     },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, new_branch, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitBranchCreateAndSwitch(repo, { newBranch: new_branch, branch });
@@ -239,6 +265,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
       branch: z.string(),
     },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitBranchSwitch(repo, branch);
@@ -261,6 +288,7 @@ export function createServer(configPath: string): McpServer {
       repo_path: z.string().min(1),
       branch: z.string().optional(),
     },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitFetch(repo, { branch });
@@ -285,6 +313,7 @@ export function createServer(configPath: string): McpServer {
       new_branch: z.string(),
       branch: z.string().min(1).optional(),
     },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, path, new_branch, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitWorktreeAdd(repo, { path, newBranch: new_branch, branch });
@@ -306,6 +335,7 @@ export function createServer(configPath: string): McpServer {
     {
       repo_path: z.string().min(1),
     },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const branch = await requireAllowedBranch(repo);
@@ -331,6 +361,7 @@ export function createServer(configPath: string): McpServer {
       body: z.string(),
       base: z.string().min(1).optional(),
     },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, title, body, base }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const branch = await requireAllowedBranch(repo);
