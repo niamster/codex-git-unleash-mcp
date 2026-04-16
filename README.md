@@ -1,10 +1,12 @@
 # codex-git-unleash-mcp
 
-Local MCP server for a narrow, policy-constrained set of Git and GitHub operations that Codex can call without repeated sandbox approval prompts.
+Local MCP server for a narrow, policy-constrained set of Git and GitHub operations that Codex can call with fewer repeated shell and sandbox approval prompts.
 
 It exists to handle a small approved workflow through MCP tools: inspect repository state, stage and commit changes, fetch and push the current branch, create or switch local branches in a constrained way, and open draft pull requests.
 
 This is especially useful with OpenAI Codex sandbox, where protected-path behavior still applies to paths such as `.git`. In practice, shell Git operations that write repository metadata can still be blocked or require approval, while direct GitHub network mutations may still be allowed or approval-gated depending on runtime policy.
+
+The MCP tool metadata in this server is explicit about which tools are read-only, which ones are additive mutations, and which ones may replace existing local or remote state. That can help Codex make better approval decisions, but it does not bypass Codex approval policy or higher-level safety monitoring. Repository mutations may still prompt for approval or be cancelled by the client/runtime.
 
 See OpenAI Codex docs: [Protected paths in writable roots](https://developers.openai.com/codex/agent-approvals-security#protected-paths-in-writable-roots).
 
