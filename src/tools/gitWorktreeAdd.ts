@@ -1,5 +1,5 @@
 import { requireAllowedBranchName } from "../auth/branchAuth.js";
-import { requireBranchingPolicy } from "../auth/branchingPolicy.js";
+import { requireWorkflowMode } from "../auth/branchingPolicy.js";
 import { validateWorktreePathAgainstBasePath } from "../auth/pathValidation.js";
 import { BranchAlreadyExistsError, EmptyBranchNameError } from "../errors.js";
 import { addWorktree, branchExists, fetchBranch } from "../exec/git.js";
@@ -17,7 +17,7 @@ export async function gitWorktreeAdd(
   repo: RepoPolicy,
   input: { path: string; newBranch: string; branch?: string },
 ): Promise<GitWorktreeAddResult> {
-  requireBranchingPolicy(repo, "git_worktree_add", ["worktree"]);
+  requireWorkflowMode(repo, "git_worktree_add", ["worktree"]);
   const normalizedBranch = input.newBranch.trim();
   if (!normalizedBranch) {
     throw new EmptyBranchNameError();

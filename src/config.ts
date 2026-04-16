@@ -6,25 +6,11 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 
 import { ConfigError } from "./errors.js";
-import type {
-  BranchingPolicy,
-  Config,
-  GlobalRepoOverrideField,
-  RepoPolicy,
-  RepoPolicyGlobalRepoOverrides,
-} from "./types/config.js";
+import type { Config, RepoPolicy, RepoPolicyOverrides, WorkflowMode } from "./types/config.js";
 
 export const REPO_LOCAL_CONFIG_FILENAME = ".git-unleash.yaml";
 
-const branchingPolicySchema = z.enum(["worktree", "feature_branch", "current_branch"]);
-const branchingPoliciesSchema = z.array(branchingPolicySchema).nonempty();
-const globalRepoOverrideFieldSchema = z.enum([
-  "feature_branch_pattern",
-  "git_worktree_base_path",
-  "allow_draft_prs",
-  "branching_policies",
-]);
-const globalRepoOverrideFieldsSchema = z.array(globalRepoOverrideFieldSchema).nonempty();
+const workflowModeSchema = z.enum(["worktree", "feature_branch", "current_branch"]);
 
 const policyDefaultsSchema = z.object({
   allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
@@ -32,7 +18,7 @@ const policyDefaultsSchema = z.object({
   git_worktree_base_path: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
-  branching_policies: branchingPoliciesSchema.optional(),
+  workflow_mode: workflowModeSchema.optional(),
 });
 
 const repoPolicySchema = policyDefaultsSchema.extend({
@@ -45,13 +31,11 @@ const repoLocalPolicySchema = z.object({
   git_worktree_base_path: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
-  branching_policies: branchingPoliciesSchema.optional(),
-  allow_global_repo_overrides: globalRepoOverrideFieldsSchema.optional(),
+  workflow_mode: workflowModeSchema.optional(),
 });
 
 const configSchema = z.object({
   defaults: policyDefaultsSchema.optional(),
-  always_allowed_branch_patterns: z.array(z.string().min(1)).nonempty().optional(),
   repositories: z.array(repoPolicySchema),
 });
 
@@ -59,9 +43,7 @@ export type EditablePolicyDefaults = z.infer<typeof policyDefaultsSchema>;
 export type EditableRepoPolicy = z.infer<typeof repoPolicySchema>;
 export type EditableConfig = z.infer<typeof configSchema>;
 
-export type BootstrapConfigInput = EditablePolicyDefaults & {
-  always_allowed_branch_patterns?: string[];
-};
+export type BootstrapConfigInput = EditablePolicyDefaults;
 
 export type UpsertRepoConfigInput = {
   repo_path: string;
@@ -128,21 +110,18 @@ export async function loadRepoLocalPolicy(
     featureBranchPattern: resolveFeatureBranchPattern(parsed.feature_branch_pattern),
     gitWorktreeBasePath: await resolveGitWorktreeBasePath(parsed.git_worktree_base_path, { repoRoot: canonicalRepoRoot }),
     allowDraftPrs: parsed.allow_draft_prs ?? true,
-    branchingPolicies: parsed.branching_policies,
+    workflowMode: parsed.workflow_mode,
     policySource: "repo_local",
     repoLocalConfigPath: configPath,
     repoLocalConfigRelativePath: REPO_LOCAL_CONFIG_FILENAME,
+    repoOverridesApplied: false,
   };
 
-  if (!globalRepoPolicy || parsed.allow_global_repo_overrides === undefined) {
+  if (!globalRepoPolicy?.repoOverrides) {
     return repoLocalPolicy;
   }
 
-  return applyAllowedGlobalRepoOverrides(
-    repoLocalPolicy,
-    globalRepoPolicy.globalRepoOverrides,
-    parsed.allow_global_repo_overrides,
-  );
+  return applyRepoOverrides(repoLocalPolicy, globalRepoPolicy.repoOverrides);
 }
 
 export async function bootstrapConfig(configPath: string, input: BootstrapConfigInput): Promise<EditableConfig> {
@@ -152,7 +131,6 @@ export async function bootstrapConfig(configPath: string, input: BootstrapConfig
 
   const config = sanitizeEditableConfig({
     defaults: toOptionalPolicyDefaults(input),
-    always_allowed_branch_patterns: input.always_allowed_branch_patterns,
     repositories: [],
   });
 
@@ -233,17 +211,25 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
         : await resolveGitWorktreeBasePath(config.defaults.git_worktree_base_path);
     const gitWorktreeBasePath = explicitGitWorktreeBasePath ?? defaultGitWorktreeBasePath;
 
-    const repoPatternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns ?? [];
-    const globalPatternSources = config.always_allowed_branch_patterns ?? [];
-    const patternSources = [...repoPatternSources, ...globalPatternSources];
+    const patternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns ?? [];
 
     if (patternSources.length === 0) {
       throw new ConfigError(
-        `repository '${repo.path}' must define allowed_branch_patterns directly, inherit them from top-level defaults, or rely on always_allowed_branch_patterns`,
+        `repository '${repo.path}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
       );
     }
 
     const allowedBranchPatterns = compileBranchPatterns(patternSources, repo.path);
+    const workflowMode = repo.workflow_mode ?? config.defaults?.workflow_mode;
+    const repoOverrides = buildRepoOverrides({
+      allowedBranchPatterns:
+        repo.allowed_branch_patterns === undefined ? undefined : compileBranchPatterns(repo.allowed_branch_patterns, repo.path),
+      featureBranchPattern: explicitFeatureBranchPattern,
+      gitWorktreeBasePath: explicitGitWorktreeBasePath,
+      defaultRemote: repo.default_remote,
+      allowDraftPrs: repo.allow_draft_prs,
+      workflowMode: repo.workflow_mode,
+    });
 
     repositories.push({
       path: expandedPath,
@@ -254,14 +240,10 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       gitWorktreeBasePath,
       defaultRemote: repo.default_remote ?? config.defaults?.default_remote,
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
-      branchingPolicies: resolveBranchingPolicies(repo.branching_policies, config.defaults?.branching_policies),
+      workflowMode,
       policySource: "global",
-      globalRepoOverrides: buildGlobalRepoOverrides({
-        featureBranchPattern: explicitFeatureBranchPattern,
-        gitWorktreeBasePath: explicitGitWorktreeBasePath,
-        allowDraftPrs: repo.allow_draft_prs,
-        branchingPolicies: repo.branching_policies,
-      }),
+      repoOverrides,
+      repoOverridesApplied: repoOverrides !== undefined,
     });
 
     seenPaths.add(canonicalPath);
@@ -291,7 +273,6 @@ async function writeConfig(configPath: string, config: EditableConfig): Promise<
 function sanitizeEditableConfig(input: Partial<EditableConfig>): EditableConfig {
   return {
     ...(input.defaults ? { defaults: sanitizePolicyDefaults(input.defaults) } : {}),
-    ...(input.always_allowed_branch_patterns ? { always_allowed_branch_patterns: input.always_allowed_branch_patterns } : {}),
     repositories: (input.repositories ?? []).map((repo) => sanitizeEditableRepo(repo)),
   };
 }
@@ -316,77 +297,39 @@ function toOptionalPolicyDefaults(input: Partial<EditablePolicyDefaults>): Edita
     ...(input.git_worktree_base_path ? { git_worktree_base_path: input.git_worktree_base_path } : {}),
     ...(input.default_remote ? { default_remote: input.default_remote } : {}),
     ...(input.allow_draft_prs !== undefined ? { allow_draft_prs: input.allow_draft_prs } : {}),
-    ...(input.branching_policies ? { branching_policies: input.branching_policies } : {}),
+    ...(input.workflow_mode ? { workflow_mode: input.workflow_mode } : {}),
   };
 }
 
-function resolveBranchingPolicies(
-  repoPolicies: BranchingPolicy[] | undefined,
-  defaultPolicies: BranchingPolicy[] | undefined,
-): BranchingPolicy[] | undefined {
-  return repoPolicies ?? defaultPolicies;
-}
-
-function buildGlobalRepoOverrides(input: RepoPolicyGlobalRepoOverrides): RepoPolicyGlobalRepoOverrides | undefined {
-  const overrides: RepoPolicyGlobalRepoOverrides = {
+function buildRepoOverrides(input: RepoPolicyOverrides): RepoPolicyOverrides | undefined {
+  const overrides: RepoPolicyOverrides = {
+    ...(input.allowedBranchPatterns !== undefined ? { allowedBranchPatterns: input.allowedBranchPatterns } : {}),
     ...(input.featureBranchPattern !== undefined ? { featureBranchPattern: input.featureBranchPattern } : {}),
     ...(input.gitWorktreeBasePath !== undefined ? { gitWorktreeBasePath: input.gitWorktreeBasePath } : {}),
+    ...(input.defaultRemote !== undefined ? { defaultRemote: input.defaultRemote } : {}),
     ...(input.allowDraftPrs !== undefined ? { allowDraftPrs: input.allowDraftPrs } : {}),
-    ...(input.branchingPolicies !== undefined ? { branchingPolicies: input.branchingPolicies } : {}),
+    ...(input.workflowMode !== undefined ? { workflowMode: input.workflowMode } : {}),
   };
 
   return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
 
-function applyAllowedGlobalRepoOverrides(
+function applyRepoOverrides(
   repoLocalPolicy: RepoPolicy,
-  globalRepoOverrides: RepoPolicyGlobalRepoOverrides | undefined,
-  allowedFields: GlobalRepoOverrideField[],
+  repoOverrides: RepoPolicyOverrides,
 ): RepoPolicy {
-  if (!globalRepoOverrides) {
-    return repoLocalPolicy;
-  }
-
-  let nextPolicy = repoLocalPolicy;
-
-  for (const field of allowedFields) {
-    switch (field) {
-      case "feature_branch_pattern":
-        if (globalRepoOverrides.featureBranchPattern !== undefined) {
-          nextPolicy = {
-            ...nextPolicy,
-            featureBranchPattern: globalRepoOverrides.featureBranchPattern,
-          };
-        }
-        break;
-      case "git_worktree_base_path":
-        if (globalRepoOverrides.gitWorktreeBasePath !== undefined) {
-          nextPolicy = {
-            ...nextPolicy,
-            gitWorktreeBasePath: globalRepoOverrides.gitWorktreeBasePath,
-          };
-        }
-        break;
-      case "allow_draft_prs":
-        if (globalRepoOverrides.allowDraftPrs !== undefined) {
-          nextPolicy = {
-            ...nextPolicy,
-            allowDraftPrs: globalRepoOverrides.allowDraftPrs,
-          };
-        }
-        break;
-      case "branching_policies":
-        if (globalRepoOverrides.branchingPolicies !== undefined) {
-          nextPolicy = {
-            ...nextPolicy,
-            branchingPolicies: globalRepoOverrides.branchingPolicies,
-          };
-        }
-        break;
-    }
-  }
-
-  return nextPolicy;
+  return {
+    ...repoLocalPolicy,
+    ...(repoOverrides.allowedBranchPatterns !== undefined
+      ? { allowedBranchPatterns: repoOverrides.allowedBranchPatterns }
+      : {}),
+    ...(repoOverrides.featureBranchPattern !== undefined ? { featureBranchPattern: repoOverrides.featureBranchPattern } : {}),
+    ...(repoOverrides.gitWorktreeBasePath !== undefined ? { gitWorktreeBasePath: repoOverrides.gitWorktreeBasePath } : {}),
+    ...(repoOverrides.defaultRemote !== undefined ? { defaultRemote: repoOverrides.defaultRemote } : {}),
+    ...(repoOverrides.allowDraftPrs !== undefined ? { allowDraftPrs: repoOverrides.allowDraftPrs } : {}),
+    ...(repoOverrides.workflowMode !== undefined ? { workflowMode: repoOverrides.workflowMode } : {}),
+    repoOverridesApplied: true,
+  };
 }
 
 function resolveFeatureBranchPattern(pattern: string | undefined): string | undefined {

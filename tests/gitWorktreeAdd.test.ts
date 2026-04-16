@@ -124,7 +124,7 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects worktree creation when branching_policies excludes worktree", async () => {
+  it("rejects worktree creation when workflow_mode excludes worktree", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -132,7 +132,7 @@ describe("gitWorktreeAdd", () => {
       gitWorktreeAdd(
         {
           ...repo,
-          branchingPolicies: ["feature_branch"],
+          workflowMode: "feature_branch",
         },
         {
           path: "/tmp/git-mcp-policy-mismatch-worktree",
@@ -142,7 +142,7 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("rejects worktree creation when branching_policies excludes worktree via current_branch-only mode", async () => {
+  it("rejects worktree creation when workflow_mode is current_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -150,7 +150,7 @@ describe("gitWorktreeAdd", () => {
       gitWorktreeAdd(
         {
           ...repo,
-          branchingPolicies: ["current_branch"],
+          workflowMode: "current_branch",
         },
         {
           path: "/tmp/git-mcp-current-branch-worktree",
@@ -160,7 +160,7 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("allows worktree creation when branching_policies includes worktree among multiple strategies", async () => {
+  it("allows worktree creation when workflow_mode is worktree", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     const remoteDir = await createTempBareGitRepo();
     const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-add-multi-parent-"));
@@ -182,7 +182,7 @@ describe("gitWorktreeAdd", () => {
     const result = await gitWorktreeAdd(
       {
         ...repo,
-        branchingPolicies: ["current_branch", "worktree"],
+        workflowMode: "worktree",
       },
       {
         path: worktreeDir,

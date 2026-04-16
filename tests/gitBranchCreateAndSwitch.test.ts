@@ -133,7 +133,7 @@ describe("gitBranchCreateAndSwitch", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects branch creation when branching_policies excludes feature_branch", async () => {
+  it("rejects branch creation when workflow_mode excludes feature_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -141,14 +141,14 @@ describe("gitBranchCreateAndSwitch", () => {
       gitBranchCreateAndSwitch(
         {
           ...repo,
-          branchingPolicies: ["worktree"],
+          workflowMode: "worktree",
         },
         { newBranch: "feature/from-branch-tool" },
       ),
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("rejects branch creation when branching_policies excludes feature_branch via current_branch-only mode", async () => {
+  it("rejects branch creation when workflow_mode is current_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -156,14 +156,14 @@ describe("gitBranchCreateAndSwitch", () => {
       gitBranchCreateAndSwitch(
         {
           ...repo,
-          branchingPolicies: ["current_branch"],
+          workflowMode: "current_branch",
         },
         { newBranch: "feature/from-current-branch" },
       ),
     ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
   });
 
-  it("allows branch creation when branching_policies includes feature_branch among multiple strategies", async () => {
+  it("allows branch creation when workflow_mode is feature_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     const remoteDir = await createTempBareGitRepo();
     tempPaths.push(repoDir, remoteDir);
@@ -182,7 +182,7 @@ describe("gitBranchCreateAndSwitch", () => {
     const result = await gitBranchCreateAndSwitch(
       {
         ...repo,
-        branchingPolicies: ["worktree", "feature_branch"],
+        workflowMode: "feature_branch",
       },
       { newBranch: "feature/multi-strategy" },
     );

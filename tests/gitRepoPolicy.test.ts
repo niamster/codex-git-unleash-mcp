@@ -14,8 +14,9 @@ describe("getGitRepoPolicy", () => {
       gitWorktreeBasePath: "/private/tmp/worktrees",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicies: ["current_branch", "feature_branch"],
+      workflowMode: "feature_branch",
       policySource: "global",
+      repoOverridesApplied: true,
     };
 
     expect(getGitRepoPolicy(repo)).toEqual({
@@ -26,9 +27,10 @@ describe("getGitRepoPolicy", () => {
       gitWorktreeBasePath: "/private/tmp/worktrees",
       defaultRemote: "origin",
       allowDraftPrs: true,
-      branchingPolicies: ["current_branch", "feature_branch"],
+      workflowMode: "feature_branch",
       policySource: "global",
       repoLocalConfigPath: undefined,
+      repoOverridesApplied: true,
     });
   });
 });

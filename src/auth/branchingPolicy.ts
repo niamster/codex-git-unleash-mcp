@@ -1,16 +1,16 @@
 import { BranchingPolicyViolationError } from "../errors.js";
-import type { BranchingPolicy, RepoPolicy } from "../types/config.js";
+import type { RepoPolicy, WorkflowMode } from "../types/config.js";
 
-export function requireBranchingPolicy(
+export function requireWorkflowMode(
   repo: RepoPolicy,
   toolName: string,
-  allowedPolicies: BranchingPolicy[],
+  allowedModes: WorkflowMode[],
 ): void {
-  if (!repo.branchingPolicies || repo.branchingPolicies.length === 0) {
+  if (!repo.workflowMode) {
     return;
   }
 
-  if (!repo.branchingPolicies.some((policy) => allowedPolicies.includes(policy))) {
-    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.branchingPolicies);
+  if (!allowedModes.includes(repo.workflowMode)) {
+    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.workflowMode);
   }
 }
