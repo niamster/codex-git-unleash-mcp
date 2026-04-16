@@ -18,7 +18,7 @@ import { getGitRepoPolicy } from "./tools/gitRepoPolicy.js";
 import { getGitStatus } from "./tools/gitStatus.js";
 import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
-const branchingPoliciesSchema = z.array(z.enum(["worktree", "feature_branch", "current_branch"])).min(1);
+const workflowModeSchema = z.enum(["worktree", "feature_branch", "current_branch"]);
 
 const configPolicyFields = {
   allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
@@ -26,7 +26,7 @@ const configPolicyFields = {
   git_worktree_base_path: z.string().min(1).optional(),
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
-  branching_policies: branchingPoliciesSchema.optional(),
+  workflow_mode: workflowModeSchema.optional(),
 };
 
 const CLOSED_WORLD_READ_ONLY_TOOL: ToolAnnotations = {
@@ -84,10 +84,7 @@ export function createServer(configPath: string): McpServer {
   server.tool(
     "config_bootstrap",
     "Create the initial MCP config file when it does not yet exist. This tool writes a minimal valid YAML config and does not apply changes to the current server process; restart the MCP server after use.",
-    {
-      ...configPolicyFields,
-      always_allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
-    },
+    configPolicyFields,
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async (input) => {
       const nextConfig = await bootstrapConfig(configPath, input);

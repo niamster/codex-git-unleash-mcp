@@ -1,16 +1,13 @@
-export type BranchingPolicy = "worktree" | "feature_branch" | "current_branch";
+export type WorkflowMode = "worktree" | "feature_branch" | "current_branch";
 export type RepoPolicySource = "global" | "repo_local";
-export type GlobalRepoOverrideField =
-  | "feature_branch_pattern"
-  | "git_worktree_base_path"
-  | "allow_draft_prs"
-  | "branching_policies";
 
-export type RepoPolicyGlobalRepoOverrides = {
+export type RepoPolicyOverrides = {
+  allowedBranchPatterns?: RegExp[];
   featureBranchPattern?: string;
   gitWorktreeBasePath?: string;
+  defaultRemote?: string;
   allowDraftPrs?: boolean;
-  branchingPolicies?: BranchingPolicy[];
+  workflowMode?: WorkflowMode;
 };
 
 export type RepoPolicy = {
@@ -22,11 +19,12 @@ export type RepoPolicy = {
   gitWorktreeBasePath?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
-  branchingPolicies?: BranchingPolicy[];
+  workflowMode?: WorkflowMode;
   policySource: RepoPolicySource;
   repoLocalConfigPath?: string;
   repoLocalConfigRelativePath?: string;
-  globalRepoOverrides?: RepoPolicyGlobalRepoOverrides;
+  repoOverrides?: RepoPolicyOverrides;
+  repoOverridesApplied?: boolean;
 };
 
 export type Config = {

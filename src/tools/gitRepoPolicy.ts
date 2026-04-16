@@ -8,9 +8,10 @@ export type GitRepoPolicyResult = {
   gitWorktreeBasePath?: string;
   defaultRemote?: string;
   allowDraftPrs: boolean;
-  branchingPolicies?: string[];
+  workflowMode?: string;
   policySource: string;
   repoLocalConfigPath?: string;
+  repoOverridesApplied: boolean;
 };
 
 export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
@@ -22,8 +23,9 @@ export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
     gitWorktreeBasePath: repo.gitWorktreeBasePath,
     defaultRemote: repo.defaultRemote,
     allowDraftPrs: repo.allowDraftPrs,
-    branchingPolicies: repo.branchingPolicies,
+    workflowMode: repo.workflowMode,
     policySource: repo.policySource,
     repoLocalConfigPath: repo.repoLocalConfigPath,
+    repoOverridesApplied: repo.repoOverridesApplied ?? false,
   };
 }

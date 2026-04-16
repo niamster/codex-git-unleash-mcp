@@ -89,7 +89,7 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
   });
 
-  it("allows matching global repo entries to override opted-in repo-local fields", async () => {
+  it("allows matching global repo entries to override repo-local policy", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
     const canonicalRepoDir = await fs.realpath(repoDir);
@@ -102,13 +102,7 @@ describe("resolveAllowedRepo", () => {
         'feature_branch_pattern: "owner/<feature-name>"',
         "git_worktree_base_path: .worktrees",
         "allow_draft_prs: true",
-        "branching_policies:",
-        "  - worktree",
-        "allow_global_repo_overrides:",
-        "  - feature_branch_pattern",
-        "  - git_worktree_base_path",
-        "  - allow_draft_prs",
-        "  - branching_policies",
+        "workflow_mode: worktree",
       ].join("\n"),
       "utf8",
     );
@@ -125,13 +119,15 @@ describe("resolveAllowedRepo", () => {
             gitWorktreeBasePath: "/tmp/global-worktrees",
             defaultRemote: "origin",
             allowDraftPrs: false,
-            branchingPolicies: ["current_branch"],
+            workflowMode: "current_branch",
             policySource: "global",
-            globalRepoOverrides: {
+            repoOverrides: {
+              allowedBranchPatterns: [/^main$/],
               featureBranchPattern: "bob/<feature-name>",
               gitWorktreeBasePath: "/tmp/global-worktrees",
+              defaultRemote: "origin",
               allowDraftPrs: false,
-              branchingPolicies: ["current_branch"],
+              workflowMode: "current_branch",
             },
           },
         ],
@@ -143,12 +139,13 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.featureBranchPattern).toBe("bob/<feature-name>");
     expect(resolvedRepo.gitWorktreeBasePath).toBe("/tmp/global-worktrees");
     expect(resolvedRepo.allowDraftPrs).toBe(false);
-    expect(resolvedRepo.branchingPolicies).toEqual(["current_branch"]);
-    expect(resolvedRepo.defaultRemote).toBeUndefined();
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+    expect(resolvedRepo.workflowMode).toBe("current_branch");
+    expect(resolvedRepo.defaultRemote).toBe("origin");
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^main$"]);
+    expect(resolvedRepo.repoOverridesApplied).toBe(true);
   });
 
-  it("does not apply matching global repo entry values without repo-local opt-in", async () => {
+  it("does not apply top-level defaults over repo-local policy", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
     const canonicalRepoDir = await fs.realpath(repoDir);
@@ -161,70 +158,13 @@ describe("resolveAllowedRepo", () => {
         'feature_branch_pattern: "owner/<feature-name>"',
         "git_worktree_base_path: .worktrees",
         "allow_draft_prs: true",
-        "branching_policies:",
-        "  - worktree",
+        "workflow_mode: worktree",
       ].join("\n"),
       "utf8",
     );
 
-    const resolvedRepo = await resolveAllowedRepo(
-      {
-        repositories: [
-          {
-            path: repoDir,
-            canonicalPath: canonicalRepoDir,
-            worktreePath: canonicalRepoDir,
-            allowedBranchPatterns: [/^main$/],
-            featureBranchPattern: "bob/<feature-name>",
-            gitWorktreeBasePath: "/tmp/global-worktrees",
-            defaultRemote: "origin",
-            allowDraftPrs: false,
-            branchingPolicies: ["current_branch"],
-            policySource: "global",
-            globalRepoOverrides: {
-              featureBranchPattern: "bob/<feature-name>",
-              gitWorktreeBasePath: "/tmp/global-worktrees",
-              allowDraftPrs: false,
-              branchingPolicies: ["current_branch"],
-            },
-          },
-        ],
-      },
-      repoDir,
-    );
-
-    expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
-    expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
-    expect(resolvedRepo.allowDraftPrs).toBe(true);
-    expect(resolvedRepo.branchingPolicies).toEqual(["worktree"]);
-    expect(resolvedRepo.defaultRemote).toBeUndefined();
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
-  });
-
-  it("does not let top-level defaults override repo-local policy", async () => {
-    const { repoDir } = await createTempGitRepo();
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-repo-local-defaults.yaml`);
-    tempPaths.push(repoDir, configPath);
-    const canonicalRepoDir = await fs.realpath(repoDir);
-
-    await fs.writeFile(
-      path.join(repoDir, ".git-unleash.yaml"),
-      [
-        "allowed_branch_patterns:",
-        '  - "^owner/.+$"',
-        'feature_branch_pattern: "owner/<feature-name>"',
-        "git_worktree_base_path: .worktrees",
-        "allow_draft_prs: true",
-        "branching_policies:",
-        "  - worktree",
-        "allow_global_repo_overrides:",
-        "  - feature_branch_pattern",
-        "  - git_worktree_base_path",
-        "  - allow_draft_prs",
-        "  - branching_policies",
-      ].join("\n"),
-      "utf8",
-    );
+    tempPaths.push(configPath);
 
     await fs.writeFile(
       configPath,
@@ -236,8 +176,7 @@ describe("resolveAllowedRepo", () => {
         "  git_worktree_base_path: /tmp/default-worktrees",
         "  default_remote: origin",
         "  allow_draft_prs: false",
-        "  branching_policies:",
-        "    - current_branch",
+        "  workflow_mode: current_branch",
         "repositories:",
         `  - path: ${repoDir}`,
       ].join("\n"),
@@ -251,9 +190,10 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
     expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
     expect(resolvedRepo.allowDraftPrs).toBe(true);
-    expect(resolvedRepo.branchingPolicies).toEqual(["worktree"]);
+    expect(resolvedRepo.workflowMode).toBe("worktree");
     expect(resolvedRepo.defaultRemote).toBeUndefined();
     expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+    expect(resolvedRepo.repoOverridesApplied).toBe(false);
   });
 
   it("rejects repo-local config that sets default_remote", async () => {

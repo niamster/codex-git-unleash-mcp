@@ -36,7 +36,7 @@ describe("loadConfig", () => {
      expect(config.repositories[0]?.gitWorktreeBasePath).toBeUndefined();
      expect(config.repositories[0]?.allowDraftPrs).toBe(true);
      expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
-     expect(config.repositories[0]?.branchingPolicies).toBeUndefined();
+     expect(config.repositories[0]?.workflowMode).toBeUndefined();
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
   });
 
@@ -55,8 +55,7 @@ describe("loadConfig", () => {
         "  git_worktree_base_path: ~/git-worktrees",
         "  default_remote: upstream",
         "  allow_draft_prs: false",
-        "  branching_policies:",
-        "    - worktree",
+        "  workflow_mode: worktree",
         "repositories:",
         `  - path: ${repoDir}`,
       ].join("\n"),
@@ -71,7 +70,7 @@ describe("loadConfig", () => {
      expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedBasePath);
      expect(config.repositories[0]?.defaultRemote).toBe("upstream");
     expect(config.repositories[0]?.allowDraftPrs).toBe(false);
-    expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+    expect(config.repositories[0]?.workflowMode).toBe("worktree");
   });
 
   it("resolves <user> in inherited feature branch patterns from USER", async () => {
@@ -180,29 +179,6 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.featureBranchPattern).toBe("system-user/<feature-name>");
   });
 
-  it("resolves <user> in always-allowed branch patterns", async () => {
-    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-user-pattern-repo-"));
-    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-user-pattern.yaml`);
-    tempPaths.push(repoDir, configPath);
-    vi.stubEnv("USER", "codex");
-    vi.stubEnv("USERNAME", "");
-
-    await fs.writeFile(
-      configPath,
-      [
-        'always_allowed_branch_patterns:',
-        '  - "^<user>/.+$"',
-        "repositories:",
-        `  - path: ${repoDir}`,
-      ].join("\n"),
-      "utf8",
-    );
-
-    const config = await loadConfig(configPath);
-
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
-  });
-
   it("rejects <user> config values when no runtime username can be determined", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-missing-user-pattern-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-missing-user-pattern.yaml`);
@@ -228,32 +204,6 @@ describe("loadConfig", () => {
     await expect(loadConfig(configPath)).rejects.toThrow("config uses '<user>' but no runtime username could be determined");
   });
 
-  it("appends always-allowed branch patterns to repository policy", async () => {
-    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-patterns-repo-"));
-    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-patterns.yaml`);
-    tempPaths.push(repoDir, configPath);
-
-    await fs.writeFile(
-      configPath,
-      [
-        'always_allowed_branch_patterns:',
-        '  - "^user/.+$"',
-        "repositories:",
-        `  - path: ${repoDir}`,
-        "    allowed_branch_patterns:",
-        '      - "^main$"',
-      ].join("\n"),
-      "utf8",
-    );
-
-    const config = await loadConfig(configPath);
-
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
-      "^main$",
-      "^user\\/.+$",
-    ]);
-  });
-
   it("lets repositories override top-level defaults", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-override-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-override.yaml`);
@@ -273,8 +223,7 @@ describe("loadConfig", () => {
         "  git_worktree_base_path: /tmp/default-worktrees",
         "  default_remote: upstream",
         "  allow_draft_prs: false",
-        "  branching_policies:",
-        "    - worktree",
+        "  workflow_mode: worktree",
         "repositories:",
         `  - path: ${repoDir}`,
         "    allowed_branch_patterns:",
@@ -283,9 +232,7 @@ describe("loadConfig", () => {
         "    git_worktree_base_path: /tmp/repo-worktrees",
         "    default_remote: origin",
         "    allow_draft_prs: true",
-        "    branching_policies:",
-        "      - current_branch",
-        "      - feature_branch",
+        "    workflow_mode: feature_branch",
       ].join("\n"),
       "utf8",
     );
@@ -297,50 +244,7 @@ describe("loadConfig", () => {
      expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedWorktreeBasePath);
      expect(config.repositories[0]?.defaultRemote).toBe("origin");
     expect(config.repositories[0]?.allowDraftPrs).toBe(true);
-    expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch", "feature_branch"]);
-  });
-
-  it("appends always-allowed branch patterns to inherited defaults", async () => {
-    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-defaults-plus-global-repo-"));
-    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-defaults-plus-global.yaml`);
-    tempPaths.push(repoDir, configPath);
-
-    await fs.writeFile(
-      configPath,
-      [
-        "defaults:",
-        "  allowed_branch_patterns:",
-        '    - "^main$"',
-        'always_allowed_branch_patterns:',
-        '  - "^user/.+$"',
-        "repositories:",
-        `  - path: ${repoDir}`,
-      ].join("\n"),
-      "utf8",
-    );
-
-    const config = await loadConfig(configPath);
-
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
-      "^main$",
-      "^user\\/.+$",
-    ]);
-  });
-
-  it("accepts repositories that only rely on always-allowed branch patterns", async () => {
-    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-global-only-repo-"));
-    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-global-only.yaml`);
-    tempPaths.push(repoDir, configPath);
-
-    await fs.writeFile(
-      configPath,
-      ['always_allowed_branch_patterns:', '  - "^user/.+$"', "repositories:", `  - path: ${repoDir}`].join("\n"),
-      "utf8",
-    );
-
-    const config = await loadConfig(configPath);
-
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+    expect(config.repositories[0]?.workflowMode).toBe("feature_branch");
   });
 
   it("rejects repositories without effective branch patterns", async () => {
@@ -351,7 +255,7 @@ describe("loadConfig", () => {
     await fs.writeFile(configPath, `repositories:\n  - path: ${repoDir}\n`, "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow(
-      `repository '${repoDir}' must define allowed_branch_patterns directly, inherit them from top-level defaults, or rely on always_allowed_branch_patterns`,
+      `repository '${repoDir}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
     );
   });
 
@@ -391,8 +295,7 @@ describe("loadConfig", () => {
       [
         "repositories:",
         `  - path: ${repoDir}`,
-        "    branching_policies:",
-        "      - current_branch",
+        "    workflow_mode: current_branch",
         "    allowed_branch_patterns:",
         '      - "^main$"',
       ].join("\n"),
@@ -401,7 +304,7 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.branchingPolicies).toEqual(["current_branch"]);
+    expect(config.repositories[0]?.workflowMode).toBe("current_branch");
   });
 
   it("rejects relative git_worktree_base_path values", async () => {
@@ -442,7 +345,6 @@ describe("bootstrapConfig", () => {
 
     const result = await bootstrapConfig(configPath, {
       feature_branch_pattern: "owner/<feature-name>",
-      always_allowed_branch_patterns: ["^owner\\/.*$"],
       allow_draft_prs: true,
     });
 
@@ -451,7 +353,6 @@ describe("bootstrapConfig", () => {
         feature_branch_pattern: "owner/<feature-name>",
         allow_draft_prs: true,
       },
-      always_allowed_branch_patterns: ["^owner\\/.*$"],
       repositories: [],
     });
 
@@ -478,7 +379,7 @@ describe("upsertRepoConfig", () => {
     const result = await upsertRepoConfig(configPath, {
       repo_path: repoDir,
       allowed_branch_patterns: ["^owner\\/.*$"],
-      branching_policies: ["worktree"],
+      workflow_mode: "worktree",
     });
 
     expect(result).toEqual({
@@ -486,14 +387,14 @@ describe("upsertRepoConfig", () => {
       repo: {
         path: repoDir,
         allowed_branch_patterns: ["^owner\\/.*$"],
-        branching_policies: ["worktree"],
+        workflow_mode: "worktree",
       },
     });
 
     const config = await loadConfig(configPath);
     expect(config.repositories).toHaveLength(1);
     expect(config.repositories[0]?.path).toBe(repoDir);
-    expect(config.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+    expect(config.repositories[0]?.workflowMode).toBe("worktree");
   });
 
   it("updates an existing repo entry matched by canonical path", async () => {
@@ -519,7 +420,7 @@ describe("upsertRepoConfig", () => {
     const result = await upsertRepoConfig(configPath, {
       repo_path: aliasDir,
       default_remote: "origin",
-      branching_policies: ["worktree"],
+      workflow_mode: "worktree",
     });
 
     expect(result).toEqual({
@@ -528,14 +429,14 @@ describe("upsertRepoConfig", () => {
         path: repoDir,
         allowed_branch_patterns: ["^owner/.*$"],
         default_remote: "origin",
-        branching_policies: ["worktree"],
+        workflow_mode: "worktree",
       },
     });
 
     const nextConfig = await loadConfig(configPath);
     expect(nextConfig.repositories).toHaveLength(1);
     expect(nextConfig.repositories[0]?.defaultRemote).toBe("origin");
-    expect(nextConfig.repositories[0]?.branchingPolicies).toEqual(["worktree"]);
+    expect(nextConfig.repositories[0]?.workflowMode).toBe("worktree");
   });
 
   it("rejects invalid branch regex updates", async () => {
