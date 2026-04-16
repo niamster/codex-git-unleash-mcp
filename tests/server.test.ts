@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ConfigError } from "../src/errors.js";
-import { getRegisteredToolNames, loadRuntimeConfig } from "../src/server.js";
+import { createServer, getRegisteredToolNames, loadRuntimeConfig } from "../src/server.js";
 
 const tempPaths: string[] = [];
 
@@ -29,6 +29,81 @@ describe("getRegisteredToolNames", () => {
       "git_push",
       "gh_pr_create_draft",
     ]);
+  });
+});
+
+describe("createServer", () => {
+  it("registers explicit tool annotations that match the tool contracts", () => {
+    const server = createServer("/tmp/config.yaml") as unknown as {
+      _registeredTools: Record<string, { annotations?: Record<string, boolean> }>;
+    };
+
+    const annotationsByTool = Object.fromEntries(
+      Object.entries(server._registeredTools).map(([name, tool]) => [name, tool.annotations ?? {}]),
+    );
+
+    expect(annotationsByTool).toEqual({
+      config_bootstrap: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      config_upsert_repo: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      git_repo_policy: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      git_status: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      git_add: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      git_commit: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      git_branch_create_and_switch: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      git_branch_switch: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      git_fetch: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      git_worktree_add: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      git_push: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      gh_pr_create_draft: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    });
   });
 });
 
