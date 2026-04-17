@@ -3,7 +3,13 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BranchNotFoundError, DirtyWorktreeError, EmptyBranchNameError } from "../src/errors.js";
+import {
+  BranchNameNotAllowedError,
+  BranchNotFoundError,
+  BranchingPolicyViolationError,
+  DirtyWorktreeError,
+  EmptyBranchNameError,
+} from "../src/errors.js";
 import { getCurrentBranch, gitSwitchBranchArgs } from "../src/exec/git.js";
 import { runCommand } from "../src/exec/run.js";
 import { gitAdd } from "../src/tools/gitAdd.js";
@@ -61,11 +67,87 @@ describe("gitBranchSwitch", () => {
     await expect(gitBranchSwitch(repo, "feature/missing")).rejects.toBeInstanceOf(BranchNotFoundError);
   });
 
+  it("rejects branch names that do not match allowed patterns", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchSwitch(
+        {
+          ...repo,
+          allowedBranchPatterns: [/^feature\/.+$/],
+        },
+        "main",
+      ),
+    ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
+  });
+
   it("rejects empty branch names", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
     await expect(gitBranchSwitch(repo, "   ")).rejects.toBeInstanceOf(EmptyBranchNameError);
+  });
+
+  it("rejects switching when workflow_mode excludes feature_branch", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchSwitch(
+        {
+          ...repo,
+          workflowMode: "worktree",
+        },
+        "main",
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects switching when workflow_mode is current_branch", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchSwitch(
+        {
+          ...repo,
+          workflowMode: "current_branch",
+        },
+        "main",
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("allows switching when workflow_mode is feature_branch", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    tempPaths.push(repoDir, remoteDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+    await gitBranchCreateAndSwitch(repo, { newBranch: "feature/switch-me" });
+    await gitBranchSwitch(repo, "main");
+
+    const result = await gitBranchSwitch(
+      {
+        ...repo,
+        workflowMode: "feature_branch",
+      },
+      "feature/switch-me",
+    );
+    const currentBranch = await getCurrentBranch(repoDir);
+
+    expect(result).toEqual({ branch: "feature/switch-me" });
+    expect(currentBranch).toBe("feature/switch-me");
   });
 
   it("uses a fixed branch switch argument shape", () => {
