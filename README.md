@@ -231,6 +231,8 @@ codex mcp list
 
 The wrapper is there so the MCP server can inherit or reconstruct the SSH agent socket when Git operations need it.
 
+It also plays nicely with child-process PATH fallback inside the Node server. By default, command execution now preserves the inherited PATH and appends common system locations, including Homebrew paths on macOS such as `/opt/homebrew/bin`, so `gh` and similar tools are found more reliably even when the MCP host starts with a minimal environment.
+
 This matters in two common cases:
 
 - `git_commit` when Git is configured for SSH-based commit signing
@@ -251,6 +253,12 @@ export SSH_AUTH_SOCK=/path/to/ssh-agent.sock
 ```
 
 On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before failing.
+
+If you need an exact PATH instead of the built-in fallback behavior, you can still register the server with an explicit environment override:
+
+```bash
+codex mcp add git_unleash --env PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" -- ~/projects/codex-git-unleash-mcp/scripts/run-mcp.sh ~/.config/codex-git-unleash-mcp.yaml
+```
 
 ## What Codex Can Do Through This MCP Server
 
