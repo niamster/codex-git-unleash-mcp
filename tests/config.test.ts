@@ -122,6 +122,57 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
   });
 
+  it("escapes regex metacharacters when resolving <user> in allowed branch patterns", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-user-escaped-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-user-escaped-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "john.doe+dev");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "defaults:",
+        "  allowed_branch_patterns:",
+        '    - "^<user>/.+$"',
+        "repositories:",
+        `  - path: ${repoDir}`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+    const [pattern] = config.repositories[0]?.allowedBranchPatterns ?? [];
+
+    expect(pattern?.source).toBe("^john\\.doe\\+dev\\/.+$");
+    expect(pattern?.test("john.doe+dev/feature")).toBe(true);
+    expect(pattern?.test("johnXdoe+dev/feature")).toBe(false);
+  });
+
+  it("keeps feature branch patterns advisory when resolving <user> with regex metacharacters", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-user-feature-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-user-feature-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+    vi.stubEnv("USER", "john.doe+dev");
+    vi.stubEnv("USERNAME", "");
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^<user>/.+$"',
+        '    feature_branch_pattern: "<user>/<feature-name>"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories[0]?.featureBranchPattern).toBe("john.doe+dev/<feature-name>");
+  });
+
   it("falls back to USERNAME before os.userInfo for <user> resolution", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-username-pattern-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-username-pattern.yaml`);
