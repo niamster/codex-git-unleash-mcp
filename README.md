@@ -91,6 +91,7 @@ Notes:
 - `feature_branch` means the preferred setup flow is `git_branch_create_and_switch`
 - `current_branch` means do not create a new worktree or feature branch; work directly on the current allowed branch
 - branch patterns are full-match regexes against the current branch name
+- keep branch patterns simple: advanced group syntax, backreferences, and nested quantifiers are rejected at config load time
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited `defaults`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, `workflow_mode`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
 - `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns

@@ -502,4 +502,30 @@ describe("upsertRepoConfig", () => {
       }),
     ).rejects.toThrow(`invalid branch regex '[' for repository '${repoDir}'`);
   });
+
+  it("rejects nested-quantifier branch regex updates", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-upsert-unsafe-regex-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-upsert-unsafe-regex.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await expect(
+      upsertRepoConfig(configPath, {
+        repo_path: repoDir,
+        allowed_branch_patterns: ["^(a+)+$"],
+      }),
+    ).rejects.toThrow(`branch regex '^(a+)+$' for repository '${repoDir}' uses nested quantifiers`);
+  });
+
+  it("rejects advanced group syntax in branch regex updates", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-upsert-advanced-group-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-upsert-advanced-group.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await expect(
+      upsertRepoConfig(configPath, {
+        repo_path: repoDir,
+        allowed_branch_patterns: ["(?=main$)main"],
+      }),
+    ).rejects.toThrow(`branch regex '(?=main$)main' for repository '${repoDir}' uses unsupported advanced group syntax`);
+  });
 });
