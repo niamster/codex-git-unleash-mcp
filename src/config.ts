@@ -461,6 +461,8 @@ function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
   return patterns.map((pattern) => {
     const resolvedPattern = resolveUserPlaceholder(pattern) ?? pattern;
 
+    validateSafeBranchPattern(resolvedPattern, repoPath);
+
     try {
       return new RegExp(resolvedPattern);
     } catch (error) {
@@ -471,6 +473,153 @@ function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
       );
     }
   });
+}
+
+function validateSafeBranchPattern(pattern: string, repoPath: string): void {
+  const groups: Array<{ containsQuantifier: boolean }> = [];
+  let inCharClass = false;
+
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index]!;
+
+    if (char === "\\") {
+      const nextChar = pattern[index + 1];
+      if (!inCharClass) {
+        if (nextChar && /[1-9]/.test(nextChar)) {
+          throw new ConfigError(
+            `branch regex '${pattern}' for repository '${repoPath}' uses unsupported backreferences; keep allowed_branch_patterns simple`,
+          );
+        }
+
+        if (nextChar === "k" && pattern[index + 2] === "<") {
+          throw new ConfigError(
+            `branch regex '${pattern}' for repository '${repoPath}' uses unsupported named backreferences; keep allowed_branch_patterns simple`,
+          );
+        }
+      }
+
+      index += 1;
+      continue;
+    }
+
+    if (inCharClass) {
+      if (char === "]") {
+        inCharClass = false;
+      }
+
+      continue;
+    }
+
+    if (char === "[") {
+      inCharClass = true;
+      continue;
+    }
+
+    if (char === "(") {
+      if (pattern[index + 1] === "?") {
+        if (pattern[index + 2] !== ":") {
+          throw new ConfigError(
+            `branch regex '${pattern}' for repository '${repoPath}' uses unsupported advanced group syntax; keep allowed_branch_patterns simple`,
+          );
+        }
+
+        index += 2;
+      }
+
+      groups.push({ containsQuantifier: false });
+      continue;
+    }
+
+    if (char === ")") {
+      const group = groups.pop();
+      if (!group) {
+        continue;
+      }
+
+      const quantifier = readRegexQuantifier(pattern, index + 1);
+      if (quantifier && group.containsQuantifier) {
+        throw new ConfigError(
+          `branch regex '${pattern}' for repository '${repoPath}' uses nested quantifiers; keep allowed_branch_patterns simple`,
+        );
+      }
+
+      const parentGroup = groups.at(-1);
+      if (parentGroup && (group.containsQuantifier || Boolean(quantifier))) {
+        parentGroup.containsQuantifier = true;
+      }
+
+      if (quantifier) {
+        index = quantifier.end - 1;
+      }
+
+      continue;
+    }
+
+    const quantifier = readRegexQuantifier(pattern, index);
+    if (quantifier) {
+      const group = groups.at(-1);
+      if (group) {
+        group.containsQuantifier = true;
+      }
+
+      index = quantifier.end - 1;
+    }
+  }
+}
+
+function readRegexQuantifier(pattern: string, index: number): { end: number } | undefined {
+  const char = pattern[index];
+  if (!char) {
+    return undefined;
+  }
+
+  if (char === "*" || char === "+" || char === "?") {
+    return {
+      end: pattern[index + 1] === "?" ? index + 2 : index + 1,
+    };
+  }
+
+  if (char !== "{") {
+    return undefined;
+  }
+
+  let cursor = index + 1;
+  if (!isAsciiDigit(pattern[cursor])) {
+    return undefined;
+  }
+
+  while (isAsciiDigit(pattern[cursor])) {
+    cursor += 1;
+  }
+
+  if (pattern[cursor] === "}") {
+    cursor += 1;
+    return {
+      end: pattern[cursor] === "?" ? cursor + 1 : cursor,
+    };
+  }
+
+  if (pattern[cursor] !== ",") {
+    return undefined;
+  }
+
+  cursor += 1;
+  while (isAsciiDigit(pattern[cursor])) {
+    cursor += 1;
+  }
+
+  if (pattern[cursor] !== "}") {
+    return undefined;
+  }
+
+  cursor += 1;
+  return {
+    end: pattern[cursor] === "?" ? cursor + 1 : cursor,
+  };
+}
+
+function isAsciiDigit(char: string | undefined): boolean {
+  return Boolean(char && /[0-9]/.test(char));
 }
 
 async function configFileExists(configPath: string): Promise<boolean> {
