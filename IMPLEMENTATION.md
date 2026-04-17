@@ -386,8 +386,10 @@ Validation:
 
 - repository path is required
 - repository must be allowlisted
+- `workflow_mode` must be unset or `feature_branch`
 - worktree must be clean
 - `branch` must be non-empty after trimming
+- `branch` must match the configured allowed branch patterns
 - `branch` must already exist locally
 - no arbitrary ref checkout or detached checkout
 

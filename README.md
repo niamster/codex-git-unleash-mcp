@@ -99,6 +99,7 @@ Notes:
 - when `git_worktree_base_path` is configured, `git_worktree_add.path` must resolve under that base path
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
 - `git_branch_create_and_switch` also requires the requested new branch name to match `allowed_branch_patterns`, and is only allowed when `workflow_mode` is unset or `feature_branch`
+- `git_branch_switch` also requires the requested branch name to match `allowed_branch_patterns`, and is only allowed when `workflow_mode` is unset or `feature_branch`
 - remote resolution prefers configured `default_remote` when present and valid, then the current branch's remote, then `origin`
 - branch creation and PR base resolution prefer the remote HEAD branch and fall back to GitHub default-branch detection when needed
 - `git_status` only requires the repository to be authorized
