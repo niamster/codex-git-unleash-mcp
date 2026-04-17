@@ -336,12 +336,22 @@ function resolveFeatureBranchPattern(pattern: string | undefined): string | unde
   return resolveUserPlaceholder(pattern);
 }
 
-function resolveUserPlaceholder(value: string | undefined): string | undefined {
+function resolveUserPlaceholder(
+  value: string | undefined,
+  options: { escapeForRegex?: boolean } = {},
+): string | undefined {
   if (!value?.includes("<user>")) {
     return value;
   }
 
-  return value.replaceAll("<user>", resolveRuntimeUsername());
+  const runtimeUsername = resolveRuntimeUsername();
+  const replacement = options.escapeForRegex ? escapeRegexLiteral(runtimeUsername) : runtimeUsername;
+
+  return value.replaceAll("<user>", replacement);
+}
+
+function escapeRegexLiteral(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function resolveRuntimeUsername(): string {
@@ -459,7 +469,7 @@ async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
 
 function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
   return patterns.map((pattern) => {
-    const resolvedPattern = resolveUserPlaceholder(pattern) ?? pattern;
+    const resolvedPattern = resolveUserPlaceholder(pattern, { escapeForRegex: true }) ?? pattern;
 
     try {
       return new RegExp(resolvedPattern);
