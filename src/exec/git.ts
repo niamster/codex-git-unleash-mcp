@@ -26,6 +26,14 @@ export function gitCreateBranchArgs(newBranch: string, startPoint: string): stri
   return ["branch", newBranch, startPoint];
 }
 
+export function gitMergeArgs(ref: string): string[] {
+  return ["merge", "--no-edit", ref];
+}
+
+export function gitMergeAbortArgs(): string[] {
+  return ["merge", "--abort"];
+}
+
 export function gitWorktreeAddArgs(worktreePath: string, newBranch: string, startPoint: string): string[] {
   return ["worktree", "add", "-b", newBranch, worktreePath, startPoint];
 }
@@ -137,6 +145,22 @@ export async function createBranch(cwd: string, newBranch: string, startPoint: s
     cwd,
     command: "git",
     argv: gitCreateBranchArgs(newBranch, startPoint),
+  });
+}
+
+export async function mergeRefIntoCurrentBranch(cwd: string, ref: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitMergeArgs(ref),
+  });
+}
+
+export async function abortMerge(cwd: string): Promise<void> {
+  await runCommand({
+    cwd,
+    command: "git",
+    argv: gitMergeAbortArgs(),
   });
 }
 
@@ -258,6 +282,17 @@ export async function hasWorkingTreeChanges(cwd: string, repoRelativePath: strin
     }
 
     throw error;
+  }
+}
+
+export async function hasMergeInProgress(cwd: string): Promise<boolean> {
+  const commonDir = await getGitCommonDir(cwd);
+
+  try {
+    await fs.access(path.join(commonDir, "MERGE_HEAD"));
+    return true;
+  } catch {
+    return false;
   }
 }
 

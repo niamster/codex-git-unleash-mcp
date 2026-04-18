@@ -109,6 +109,13 @@ export class DirtyWorktreeError extends Error {
   }
 }
 
+export class GitSyncBaseConflictError extends Error {
+  constructor(repoPath: string, branch: string, baseRef: string) {
+    super(`could not sync branch '${branch}' in repository '${repoPath}' with base '${baseRef}' because the merge conflicted`);
+    this.name = "GitSyncBaseConflictError";
+  }
+}
+
 export class BranchNotFoundError extends Error {
   constructor(branch: string, repoPath: string) {
     super(`branch '${branch}' does not exist in repository '${repoPath}'`);

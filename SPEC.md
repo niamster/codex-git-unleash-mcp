@@ -67,6 +67,7 @@ At minimum, mutating operations include:
 
 - `git_add`
 - `git_commit`
+- `git_sync_base`
 - `git_push`
 - `gh_pr_create_draft`
 
@@ -118,6 +119,7 @@ The server may expose structured tools for operations such as:
 
 - repository inspection and policy inspection
 - constrained staging and commit creation
+- constrained base-branch synchronization into the current allowed branch
 - constrained branch creation and branch switching
 - constrained linked worktree creation
 - constrained remote synchronization

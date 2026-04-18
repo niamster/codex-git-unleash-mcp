@@ -16,6 +16,7 @@ import { gitFetch } from "./tools/gitFetch.js";
 import { gitPush } from "./tools/gitPush.js";
 import { getGitRepoPolicy } from "./tools/gitRepoPolicy.js";
 import { getGitStatus } from "./tools/gitStatus.js";
+import { gitSyncBase } from "./tools/gitSyncBase.js";
 import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
 const workflowModeSchema = z.enum(["worktree", "feature_branch", "current_branch"]);
@@ -58,6 +59,7 @@ export function getRegisteredToolNames(): string[] {
     "git_branch_create_and_switch",
     "git_branch_switch",
     "git_fetch",
+    "git_sync_base",
     "git_worktree_add",
     "git_push",
     "gh_pr_create_draft",
@@ -289,6 +291,28 @@ export function createServer(configPath: string): McpServer {
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitFetch(repo, { branch });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    "git_sync_base",
+    "Merge the detected remote base branch into the current allowed branch for an authorized repository. This tool requires a clean worktree, fetches the base branch first, does not accept arbitrary refs or merge flags, and aborts on conflict before returning an error.",
+    {
+      repo_path: z.string().min(1),
+    },
+    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
+    async ({ repo_path }) => {
+      const repo = await resolveRuntimeRepo(configPath, repo_path);
+      const result = await gitSyncBase(repo);
 
       return {
         content: [
