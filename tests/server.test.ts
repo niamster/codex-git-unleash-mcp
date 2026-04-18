@@ -25,6 +25,7 @@ describe("getRegisteredToolNames", () => {
       "git_branch_create_and_switch",
       "git_branch_switch",
       "git_fetch",
+      "git_sync_base",
       "git_worktree_add",
       "git_push",
       "gh_pr_create_draft",
@@ -84,6 +85,11 @@ describe("createServer", () => {
         openWorldHint: false,
       },
       git_fetch: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+      git_sync_base: {
         readOnlyHint: false,
         destructiveHint: true,
         openWorldHint: false,

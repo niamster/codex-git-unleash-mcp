@@ -6,6 +6,8 @@ import {
   gitCommitArgs,
   gitCreateBranchArgs,
   gitFetchBranchArgs,
+  gitMergeAbortArgs,
+  gitMergeArgs,
   gitPushArgs,
   gitRemoteGetUrlArgs,
   gitRemoteHeadArgs,
@@ -33,6 +35,11 @@ describe("git argument builders", () => {
 
   it("builds constrained git fetch arguments", () => {
     expect(gitFetchBranchArgs("origin", "main")).toEqual(["fetch", "origin", "main"]);
+  });
+
+  it("builds constrained git sync-base merge arguments", () => {
+    expect(gitMergeArgs("refs/remotes/origin/main")).toEqual(["merge", "--no-edit", "refs/remotes/origin/main"]);
+    expect(gitMergeAbortArgs()).toEqual(["merge", "--abort"]);
   });
 
   it("builds constrained git branch creation arguments", () => {

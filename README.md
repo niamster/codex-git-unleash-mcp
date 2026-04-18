@@ -21,6 +21,7 @@ Current tool surface:
 - `git_add`
 - `git_commit`
 - `git_fetch`
+- `git_sync_base`
 - `git_worktree_add`
 - `git_push`
 - `git_branch_create_and_switch`
@@ -94,8 +95,9 @@ Notes:
 - keep branch patterns simple: advanced group syntax, backreferences, and nested quantifiers are rejected at config load time
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited `defaults`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, `workflow_mode`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
-- `git_add`, `git_commit`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
+- `git_add`, `git_commit`, `git_sync_base`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be authorized, fetches from the resolved remote, and uses an explicit branch when provided or the detected base branch otherwise
+- `git_sync_base` requires a clean worktree, fetches the detected remote base branch, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs
 - `git_worktree_add` requires an explicit absolute target path, validates the requested new branch name against `allowed_branch_patterns`, creates a linked worktree from an explicit or detected upstream base branch, and is only allowed when `workflow_mode` is unset or `worktree`
 - when `git_worktree_base_path` is configured, `git_worktree_add.path` must resolve under that base path
 - `git_branch_create_and_switch` and `git_branch_switch` require a clean worktree
@@ -179,10 +181,11 @@ The intended happy path is:
 5. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
 6. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
 7. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path.
-8. Call `git_add` with explicit repository-relative paths.
-9. Call `git_commit` with a normal commit message.
-10. Call `git_push` to push the current branch to the resolved remote.
-11. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
+8. Call `git_sync_base` when you need to bring the detected remote base branch into the current allowed branch without exposing generic merge controls.
+9. Call `git_add` with explicit repository-relative paths.
+10. Call `git_commit` with a normal commit message.
+11. Call `git_push` to push the current branch to the resolved remote.
+12. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
 
 Each step stays inside a fixed policy boundary. There is no arbitrary checkout, no arbitrary push refspec, no amend flow, and no non-draft PR creation.
 
@@ -273,6 +276,7 @@ Once registered, Codex should be able to use:
 - `git_add` for repository-relative paths inside an authorized repository; it rejects absolute paths and repository-escaping paths like `../x`
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
 - `git_fetch` to fetch a plain branch name from the detected remote; it does not allow arbitrary fetch arguments or refspecs and uses an explicit branch when provided or the detected base branch otherwise
+- `git_sync_base` to merge the detected remote base branch into the current allowed branch; it requires a clean worktree, does not allow arbitrary refs or merge flags, and aborts on conflict before returning an error
 - `git_worktree_add` to create a linked worktree for a new allowed branch at an explicit absolute path; it fetches the explicit or detected base branch first, does not allow arbitrary refs, and enforces `git_worktree_base_path` when configured
 - `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it; it rejects requested branch names that do not match the configured allowed branch patterns
 - `git_branch_switch` to switch to an existing local branch when the worktree is clean; it does not create branches or allow detached checkouts
@@ -287,9 +291,9 @@ When the global config file is missing, runtime tools remain registered. They ca
 
 Some operations resolve defaults at runtime instead of requiring everything to be pinned in config.
 
-- `git_fetch`, `git_push`, `git_worktree_add`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
+- `git_fetch`, `git_sync_base`, `git_push`, `git_worktree_add`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - `git_fetch`, `git_worktree_add`, `git_branch_create_and_switch`, and `gh_pr_create_draft` accept an explicit branch or base input
-- `git_fetch`, `git_worktree_add`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve their default branch or base by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
+- `git_fetch`, `git_sync_base`, `git_worktree_add`, `git_branch_create_and_switch`, and `gh_pr_create_draft` resolve their default branch or base by preferring the remote HEAD branch and falling back to the GitHub repository default branch when no explicit input is provided
 
 This keeps the tools constrained while still working across repositories that use different default branches or remotes.
 
