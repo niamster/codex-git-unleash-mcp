@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: GitHub issue guidelines
+    url: https://github.com/niamster/codex-git-unleash-mcp/blob/main/docs/github-issues.md
+    about: Read the repository's issue-title, body, and label conventions before opening a new issue.
