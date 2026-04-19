@@ -18,3 +18,5 @@ Before creating a development worktree, call `git_unleash.git_repo_policy` first
 Note: other repositories may prefer `git_unleash.git_branch_create_and_switch` instead, especially very large repositories where creating an additional linked worktree is too expensive for the task.
 
 The Git and GitHub operations for the steps above must be performed using the `git_unleash` MCP.
+
+For GitHub issue conventions in this repository, see [docs/github-issues.md](./docs/github-issues.md).
