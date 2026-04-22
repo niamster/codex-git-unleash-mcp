@@ -312,6 +312,27 @@ Output guidance:
 
 - return the resolved remote and the fetched branch
 
+### `git_pull_current_branch`
+
+Validation:
+
+- repository path is required
+- repository must be allowlisted
+- current branch must be authorized
+- worktree must be clean
+- detached HEAD is rejected
+
+Execution:
+
+- resolve the remote from configuration or constrained runtime defaults
+- fetch only the current branch from the resolved remote
+- merge only `refs/remotes/<remote>/<current-branch>` into the current branch
+- abort the merge before returning an error if a conflict occurs
+
+Output guidance:
+
+- return the current branch, resolved remote, and merged remote-tracking ref
+
 ### `git_push`
 
 Validation:
@@ -524,6 +545,7 @@ Live GitHub integration tests can be deferred until later.
 - `git_add`
 - `git_commit`
 - `git_fetch`
+- `git_pull_current_branch`
 - `git_worktree_add`
 - `git_push`
 - `git_branch_create_and_switch`

@@ -116,6 +116,15 @@ export class GitSyncBaseConflictError extends Error {
   }
 }
 
+export class GitPullCurrentBranchConflictError extends Error {
+  constructor(repoPath: string, branch: string, remoteRef: string) {
+    super(
+      `could not pull branch '${branch}' in repository '${repoPath}' from '${remoteRef}' because the merge conflicted`,
+    );
+    this.name = "GitPullCurrentBranchConflictError";
+  }
+}
+
 export class BranchNotFoundError extends Error {
   constructor(branch: string, repoPath: string) {
     super(`branch '${branch}' does not exist in repository '${repoPath}'`);
