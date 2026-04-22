@@ -196,6 +196,54 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.repoOverridesApplied).toBe(false);
   });
 
+  it("allows empty global repo entries when repo-local policy provides branch patterns", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+    const canonicalRepoDir = await fs.realpath(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^owner/.+$"',
+        'feature_branch_pattern: "owner/<feature-name>"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-empty-global-repo.yaml`);
+    tempPaths.push(configPath);
+
+    await fs.writeFile(configPath, `repositories:\n  - path: ${repoDir}\n`, "utf8");
+
+    const config = await loadConfig(configPath);
+    const resolvedRepo = await resolveAllowedRepo(config, repoDir);
+
+    expect(resolvedRepo.policySource).toBe("repo_local");
+    expect(resolvedRepo.canonicalPath).toBe(canonicalRepoDir);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+    expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
+    expect(resolvedRepo.repoOverridesApplied).toBe(false);
+  });
+
+  it("rejects empty global repo entries when no repo-local policy provides branch patterns", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-empty-global-no-local.yaml`);
+    tempPaths.push(configPath);
+
+    await fs.writeFile(configPath, `repositories:\n  - path: ${repoDir}\n`, "utf8");
+
+    const config = await loadConfig(configPath);
+
+    await expect(resolveAllowedRepo(config, repoDir)).rejects.toEqual(
+      new ConfigError(
+        `repository '${repoDir}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
+      ),
+    );
+  });
+
   it("rejects repo-local config that sets default_remote", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);

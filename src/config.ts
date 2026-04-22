@@ -212,13 +212,6 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
     const gitWorktreeBasePath = explicitGitWorktreeBasePath ?? defaultGitWorktreeBasePath;
 
     const patternSources = repo.allowed_branch_patterns ?? config.defaults?.allowed_branch_patterns ?? [];
-
-    if (patternSources.length === 0) {
-      throw new ConfigError(
-        `repository '${repo.path}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
-      );
-    }
-
     const allowedBranchPatterns = compileBranchPatterns(patternSources, repo.path);
     const workflowMode = repo.workflow_mode ?? config.defaults?.workflow_mode;
     const repoOverrides = buildRepoOverrides({

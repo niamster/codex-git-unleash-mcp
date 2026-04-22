@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { loadRepoLocalPolicy } from "../config.js";
-import { RepoNotAllowedError } from "../errors.js";
+import { ConfigError, RepoNotAllowedError } from "../errors.js";
 import { getGitCommonDir, getGitTopLevel } from "../exec/git.js";
 import type { Config, RepoPolicy } from "../types/config.js";
 
@@ -23,6 +23,12 @@ export async function resolveAllowedRepo(config: Config, repoPath: string): Prom
   }
 
   if (repo) {
+    if (repo.allowedBranchPatterns.length === 0) {
+      throw new ConfigError(
+        `repository '${repo.path}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
+      );
+    }
+
     return {
       ...repo,
       worktreePath: resolvedRepo.topLevel,
