@@ -298,16 +298,18 @@ describe("loadConfig", () => {
     expect(config.repositories[0]?.workflowMode).toBe("feature_branch");
   });
 
-  it("rejects repositories without effective branch patterns", async () => {
+  it("allows repository entries without effective branch patterns during config load", async () => {
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-no-patterns-repo-"));
     const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-no-patterns.yaml`);
     tempPaths.push(repoDir, configPath);
 
     await fs.writeFile(configPath, `repositories:\n  - path: ${repoDir}\n`, "utf8");
 
-    await expect(loadConfig(configPath)).rejects.toThrow(
-      `repository '${repoDir}' must define allowed_branch_patterns directly or inherit them from top-level defaults`,
-    );
+    const config = await loadConfig(configPath);
+
+    expect(config.repositories).toHaveLength(1);
+    expect(config.repositories[0]?.allowedBranchPatterns).toEqual([]);
+    expect(config.repositories[0]?.repoOverrides).toBeUndefined();
   });
 
   it("expands home-directory paths", async () => {
