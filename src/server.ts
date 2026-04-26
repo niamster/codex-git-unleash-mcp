@@ -284,12 +284,12 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_fetch",
-    "Fetch a plain branch name from the detected remote for an authorized repository. This tool refreshes remote-tracking refs, accepts an explicit branch when provided, otherwise detects the repository base branch at runtime, and does not allow arbitrary fetch arguments or refspecs.",
+    "Fetch a plain branch name from the detected remote for an authorized repository. This tool updates local fetch metadata and remote-tracking state only; it does not modify the working tree, index, current branch, or remote repository, and does not allow arbitrary fetch arguments or refspecs.",
     {
       repo_path: z.string().min(1),
       branch: z.string().optional(),
     },
-    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const result = await gitFetch(repo, { branch });

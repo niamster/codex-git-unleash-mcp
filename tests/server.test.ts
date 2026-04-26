@@ -87,7 +87,7 @@ describe("createServer", () => {
       },
       git_fetch: {
         readOnlyHint: false,
-        destructiveHint: true,
+        destructiveHint: false,
         openWorldHint: false,
       },
       git_sync_base: {
