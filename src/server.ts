@@ -376,11 +376,11 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_push",
-    "Push the current branch to the detected remote for an authorized repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and does not allow arbitrary refspecs, force-like behavior, or pushing unrelated branches.",
+    "Push the current branch to the detected remote for an authorized repository. This tool requires the current branch to match configured full-match patterns, pushes only HEAD to refs/heads/<current-branch>, and does not allow arbitrary refspecs, force-like behavior, delete pushes, or pushing unrelated branches.",
     {
       repo_path: z.string().min(1),
     },
-    CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
       const branch = await requireAllowedBranch(repo);

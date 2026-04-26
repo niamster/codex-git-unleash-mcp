@@ -346,7 +346,7 @@ Execution:
 
 - push only the current branch
 - resolve the remote from configuration or constrained runtime defaults
-- do not allow arbitrary refspecs
+- do not allow arbitrary refspecs, force-like behavior, delete pushes, or unrelated branch pushes
 
 Output guidance:
 

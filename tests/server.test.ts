@@ -107,7 +107,7 @@ describe("createServer", () => {
       },
       git_push: {
         readOnlyHint: false,
-        destructiveHint: true,
+        destructiveHint: false,
         openWorldHint: false,
       },
       gh_pr_create_draft: {

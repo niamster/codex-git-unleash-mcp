@@ -284,7 +284,7 @@ Once registered, Codex should be able to use:
 - `git_worktree_add` to create a linked worktree for a new allowed branch at an explicit absolute path; it fetches the explicit or detected base branch first, does not allow arbitrary refs, and enforces `git_worktree_base_path` when configured
 - `git_branch_create_and_switch` to create a local branch from an explicit or detected upstream base and switch to it; it rejects requested branch names that do not match the configured allowed branch patterns
 - `git_branch_switch` to switch to an existing local branch when the worktree is clean; it does not create branches or allow detached checkouts
-- `git_push` to push the current branch to the detected remote; it only pushes `HEAD` to `refs/heads/<current-branch>` and does not allow arbitrary refspecs or force-like behavior
+- `git_push` to push the current branch to the detected remote; it only pushes `HEAD` to `refs/heads/<current-branch>` and does not allow arbitrary refspecs, force-like behavior, delete pushes, or unrelated branch pushes
 - `gh_pr_create_draft` to create a draft PR for the current branch using an explicit base or the detected default branch; it is draft-only and requires a non-empty title
 
 Mutating tools reject detached HEAD.
