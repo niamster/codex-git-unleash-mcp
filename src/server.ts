@@ -21,6 +21,7 @@ import { gitSyncBase } from "./tools/gitSyncBase.js";
 import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
 const workflowModeSchema = z.enum(["worktree", "feature_branch", "current_branch"]);
+const allowedWorkflowModesSchema = z.array(workflowModeSchema).min(1);
 
 const configPolicyFields = {
   allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
@@ -29,6 +30,7 @@ const configPolicyFields = {
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
   workflow_mode: workflowModeSchema.optional(),
+  allowed_workflow_modes: allowedWorkflowModesSchema.optional(),
 };
 
 const CLOSED_WORLD_READ_ONLY_TOOL: ToolAnnotations = {

@@ -156,7 +156,8 @@ Optional configuration that may be useful:
 - default remote name
 - whether draft PR creation is enabled
 - suggested feature branch naming pattern
-- a workflow mode (`worktree`, `feature_branch`, or `current_branch`) enforced for branch-setup tools
+- a preferred workflow mode (`worktree`, `feature_branch`, or `current_branch`) exposed as setup guidance
+- an explicit allowed workflow mode list enforced for branch-setup tools
 
 The initial branch and PR behavior should prefer runtime inference with a narrow fallback order:
 
@@ -175,6 +176,9 @@ repositories:
       - "^feature/[a-z0-9._-]+$"
     allow_draft_prs: true
     workflow_mode: worktree
+    allowed_workflow_modes:
+      - feature_branch
+      - worktree
 ```
 
 ## Describe Support

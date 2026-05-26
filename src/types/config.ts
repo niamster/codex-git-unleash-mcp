@@ -8,6 +8,7 @@ export type RepoPolicyOverrides = {
   defaultRemote?: string;
   allowDraftPrs?: boolean;
   workflowMode?: WorkflowMode;
+  allowedWorkflowModes?: WorkflowMode[];
 };
 
 export type RepoPolicy = {
@@ -20,6 +21,7 @@ export type RepoPolicy = {
   defaultRemote?: string;
   allowDraftPrs: boolean;
   workflowMode?: WorkflowMode;
+  allowedWorkflowModes?: WorkflowMode[];
   policySource: RepoPolicySource;
   repoLocalConfigPath?: string;
   repoLocalConfigRelativePath?: string;

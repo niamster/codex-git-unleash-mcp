@@ -89,7 +89,23 @@ describe("gitBranchSwitch", () => {
     await expect(gitBranchSwitch(repo, "   ")).rejects.toBeInstanceOf(EmptyBranchNameError);
   });
 
-  it("rejects switching when workflow_mode excludes feature_branch", async () => {
+  it("rejects switching when allowed workflow modes are omitted", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchSwitch(
+        {
+          ...repo,
+          workflowMode: undefined,
+          allowedWorkflowModes: undefined,
+        },
+        "main",
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects switching when allowed workflow modes exclude feature_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -98,6 +114,7 @@ describe("gitBranchSwitch", () => {
         {
           ...repo,
           workflowMode: "worktree",
+          allowedWorkflowModes: ["worktree"],
         },
         "main",
       ),
@@ -113,6 +130,7 @@ describe("gitBranchSwitch", () => {
         {
           ...repo,
           workflowMode: "current_branch",
+          allowedWorkflowModes: ["current_branch"],
         },
         "main",
       ),

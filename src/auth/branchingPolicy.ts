@@ -6,11 +6,9 @@ export function requireWorkflowMode(
   toolName: string,
   allowedModes: WorkflowMode[],
 ): void {
-  if (!repo.workflowMode) {
-    return;
-  }
+  const allowedWorkflowModes = repo.allowedWorkflowModes ?? (repo.workflowMode ? [repo.workflowMode] : undefined);
 
-  if (!allowedModes.includes(repo.workflowMode)) {
-    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.workflowMode);
+  if (!allowedWorkflowModes?.some((mode) => allowedModes.includes(mode))) {
+    throw new BranchingPolicyViolationError(toolName, repo.worktreePath, repo.workflowMode, repo.allowedWorkflowModes);
   }
 }

@@ -124,7 +124,59 @@ describe("gitWorktreeAdd", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects worktree creation when workflow_mode excludes worktree", async () => {
+  it("allows worktree creation when explicitly included in allowed workflow modes", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    const worktreeParentDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-worktree-add-allowed-parent-"));
+    const worktreeDir = path.join(worktreeParentDir, "linked");
+    tempPaths.push(repoDir, remoteDir, worktreeParentDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitWorktreeAdd(
+      {
+        ...repo,
+        workflowMode: "feature_branch",
+        allowedWorkflowModes: ["feature_branch", "worktree"],
+      },
+      {
+        path: worktreeDir,
+        newBranch: "feature/from-explicit-worktree",
+      },
+    );
+
+    await expect(getCurrentBranch(result.path)).resolves.toBe("feature/from-explicit-worktree");
+  });
+
+  it("rejects worktree creation when allowed workflow modes are omitted", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitWorktreeAdd(
+        {
+          ...repo,
+          workflowMode: undefined,
+          allowedWorkflowModes: undefined,
+        },
+        {
+          path: "/tmp/git-mcp-unconfigured-worktree",
+          newBranch: "feature/from-unconfigured-policy",
+        },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects worktree creation when allowed workflow modes exclude worktree", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -133,6 +185,7 @@ describe("gitWorktreeAdd", () => {
         {
           ...repo,
           workflowMode: "feature_branch",
+          allowedWorkflowModes: ["feature_branch"],
         },
         {
           path: "/tmp/git-mcp-policy-mismatch-worktree",
@@ -151,6 +204,7 @@ describe("gitWorktreeAdd", () => {
         {
           ...repo,
           workflowMode: "current_branch",
+          allowedWorkflowModes: ["current_branch"],
         },
         {
           path: "/tmp/git-mcp-current-branch-worktree",
