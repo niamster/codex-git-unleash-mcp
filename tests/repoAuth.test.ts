@@ -145,6 +145,42 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.repoOverridesApplied).toBe(true);
   });
 
+  it("rejects global overrides that make repo-local workflow policy incoherent", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^owner/.+$"',
+        "workflow_mode: current_branch",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-repo-local-workflow-override.yaml`);
+    tempPaths.push(configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_workflow_modes:",
+        "      - feature_branch",
+        "      - worktree",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+
+    await expect(resolveAllowedRepo(config, repoDir)).rejects.toThrow(
+      "workflow_mode 'current_branch' must be included in allowed_workflow_modes",
+    );
+  });
+
   it("does not apply top-level defaults over repo-local policy", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);

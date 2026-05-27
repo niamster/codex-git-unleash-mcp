@@ -323,7 +323,11 @@ function applyRepoOverrides(
   repoLocalPolicy: RepoPolicy,
   repoOverrides: RepoPolicyOverrides,
 ): RepoPolicy {
-  return {
+  const workflowMode = repoOverrides.workflowMode ?? repoLocalPolicy.workflowMode;
+  const allowedWorkflowModes =
+    repoOverrides.allowedWorkflowModes ??
+    (repoOverrides.workflowMode !== undefined ? [repoOverrides.workflowMode] : repoLocalPolicy.allowedWorkflowModes);
+  const mergedPolicy: RepoPolicy = {
     ...repoLocalPolicy,
     ...(repoOverrides.allowedBranchPatterns !== undefined
       ? { allowedBranchPatterns: repoOverrides.allowedBranchPatterns }
@@ -332,9 +336,16 @@ function applyRepoOverrides(
     ...(repoOverrides.gitWorktreeBasePath !== undefined ? { gitWorktreeBasePath: repoOverrides.gitWorktreeBasePath } : {}),
     ...(repoOverrides.defaultRemote !== undefined ? { defaultRemote: repoOverrides.defaultRemote } : {}),
     ...(repoOverrides.allowDraftPrs !== undefined ? { allowDraftPrs: repoOverrides.allowDraftPrs } : {}),
-    ...(repoOverrides.workflowMode !== undefined ? { workflowMode: repoOverrides.workflowMode } : {}),
-    ...(repoOverrides.allowedWorkflowModes !== undefined ? { allowedWorkflowModes: repoOverrides.allowedWorkflowModes } : {}),
+    ...(workflowMode !== undefined ? { workflowMode } : {}),
+    ...(allowedWorkflowModes !== undefined ? { allowedWorkflowModes } : {}),
     repoOverridesApplied: true,
+  };
+
+  const effectiveAllowedWorkflowModes = resolveAllowedWorkflowModes(mergedPolicy.allowedWorkflowModes, mergedPolicy.workflowMode);
+
+  return {
+    ...mergedPolicy,
+    ...(effectiveAllowedWorkflowModes !== undefined ? { allowedWorkflowModes: effectiveAllowedWorkflowModes } : {}),
   };
 }
 
