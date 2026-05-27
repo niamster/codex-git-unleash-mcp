@@ -263,7 +263,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_branch_switch",
-    "Switch to an existing local branch in an authorized repository. This tool mutates repository state, requires the worktree to be clean, requires the target branch name to match configured allowed patterns, is only allowed when workflow_mode is unset or feature_branch, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
+    "Switch to an existing local branch in an authorized repository. This tool mutates repository state, requires the worktree to be clean, requires the target branch name to match configured allowed patterns, requires feature_branch in the effective allowed workflow modes, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
     {
       repo_path: z.string().min(1),
       branch: z.string(),
