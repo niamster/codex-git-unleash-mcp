@@ -239,7 +239,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_branch_create_and_switch",
-    "Create a new local branch from an explicit or detected upstream base branch for an authorized repository, then switch to it. This tool requires a clean worktree, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
+    "Create a new local branch from an explicit or detected upstream base branch for an authorized repository, then switch to it. This tool requires a clean worktree, requires feature_branch in the effective allowed workflow modes, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
     {
       repo_path: z.string().min(1),
       new_branch: z.string(),
@@ -353,7 +353,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_worktree_add",
-    "Create a linked worktree at an explicit absolute path for a new local branch in an authorized repository. This tool mutates repository state, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and enforces the configured worktree base path when one exists.",
+    "Create a linked worktree at an explicit absolute path for a new local branch in an authorized repository. This tool mutates repository state, requires worktree in the effective allowed workflow modes, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and enforces the configured worktree base path when one exists.",
     {
       repo_path: z.string().min(1),
       path: z.string().min(1),
