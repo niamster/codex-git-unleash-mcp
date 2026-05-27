@@ -192,6 +192,8 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
   const repositories: RepoPolicy[] = [];
   const seenPaths = new Set<string>();
 
+  resolveAllowedWorkflowModes(config.defaults?.allowed_workflow_modes, config.defaults?.workflow_mode);
+
   for (const repo of config.repositories) {
     const expandedPath = expandHomeDir(repo.path);
 
