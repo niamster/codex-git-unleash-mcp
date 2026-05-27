@@ -421,6 +421,18 @@ describe("bootstrapConfig", () => {
       new ConfigError(`config file '${configPath}' already exists`),
     );
   });
+
+  it("rejects defaults whose workflow preference is not allowed", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-bootstrap-invalid-workflow-defaults.yaml`);
+    tempPaths.push(configPath);
+
+    await expect(
+      bootstrapConfig(configPath, {
+        workflow_mode: "worktree",
+        allowed_workflow_modes: ["feature_branch"],
+      }),
+    ).rejects.toThrow("workflow_mode 'worktree' must be included in allowed_workflow_modes");
+  });
 });
 
 describe("upsertRepoConfig", () => {
