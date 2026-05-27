@@ -93,8 +93,9 @@ Notes:
 - `allowed_branch_patterns` and `feature_branch_pattern` support a dedicated `<user>` placeholder, resolved from `USER`, then `USERNAME`, then the system account username; other environment-variable expansion is intentionally not supported
 - `git_worktree_base_path` is inherited or overridden per repository and, when configured, constrains `git_worktree_add.path` to stay under that base
 - for Codex workflows, prefer a repo-specific in-repository worktree base such as `.worktrees/` when you want linked worktrees to stay under the same trusted project root; add that directory to `.gitignore`
-- `workflow_mode` is optional preference metadata for agents; supported values are `worktree`, `feature_branch`, and `current_branch`
+- `workflow_mode` is optional preference metadata for agents; it tells them which Git setup path to try first for this repository. Supported values are `worktree`, `feature_branch`, and `current_branch`
 - `allowed_workflow_modes` is the explicit authorization boundary for setup tools and accepts `worktree`, `feature_branch`, or `current_branch`
+- when both fields are present, agents should treat `workflow_mode` as the preferred starting flow and `allowed_workflow_modes` as the list of setup flows they may actually use
 - when `allowed_workflow_modes` is omitted but `workflow_mode` is set, setup tools derive the allowed mode from `workflow_mode` for backward compatibility
 - when both `allowed_workflow_modes` and `workflow_mode` are omitted, setup tools fail closed and ask the caller to inspect `git_repo_policy`
 - `current_branch` cannot be combined with `feature_branch` or `worktree` in `allowed_workflow_modes`
@@ -105,7 +106,7 @@ Notes:
 - branch patterns are full-match regexes against the current branch name
 - keep branch patterns simple: advanced group syntax, backreferences, and nested quantifiers are rejected at config load time
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited `defaults`
-- `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, `workflow_mode`, `allowed_workflow_modes`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
+- `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, the preferred `workflow_mode`, `allowed_workflow_modes`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
 - `git_add`, `git_commit`, `git_sync_base`, `git_pull_current_branch`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be authorized, fetches from the resolved remote, updates local fetch metadata and remote-tracking state only, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_sync_base` requires a clean worktree, fetches the detected remote base branch, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs
@@ -194,15 +195,16 @@ The intended happy path is:
 2. Call `config_upsert_repo` to add or update an allowlisted repository entry when needed.
 3. Or check in `.git-unleash.yaml` to authorize the repository through repo-local policy instead of the global YAML.
 4. Call `git_repo_policy` or `git_status` to inspect the authorized repository.
-5. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
-6. Call `git_branch_create_and_switch` to branch from an explicit or detected upstream base when you need a new local branch in the current worktree.
-7. Call `git_worktree_add` when you need a separate linked worktree on a new allowed branch at an explicit absolute path.
-8. Call `git_sync_base` when you need to bring the detected remote base branch into the current allowed branch without exposing generic merge controls.
-9. Call `git_pull_current_branch` when you need to bring the current branch's resolved remote branch into the current allowed branch without exposing generic merge controls.
-10. Call `git_add` with explicit repository-relative paths.
-11. Call `git_commit` with a normal commit message.
-12. Call `git_push` to push the current branch to the resolved remote.
-13. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
+5. Prefer the setup flow advertised by `git_repo_policy.workflow_mode` as the way to start work in that repository.
+6. Before creating a branch, use `git_repo_policy` to confirm the configured `allowed_branch_patterns`, then choose a new branch name that matches that policy.
+7. Call `git_branch_create_and_switch` when the preferred or selected setup flow is `feature_branch` and you need a new local branch in the current worktree.
+8. Call `git_worktree_add` when the preferred or selected setup flow is `worktree` and you need a separate linked worktree on a new allowed branch at an explicit absolute path.
+9. Call `git_sync_base` when you need to bring the detected remote base branch into the current allowed branch without exposing generic merge controls.
+10. Call `git_pull_current_branch` when you need to bring the current branch's resolved remote branch into the current allowed branch without exposing generic merge controls.
+11. Call `git_add` with explicit repository-relative paths.
+12. Call `git_commit` with a normal commit message.
+13. Call `git_push` to push the current branch to the resolved remote.
+14. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
 
 Each step stays inside a fixed policy boundary. There is no arbitrary checkout, no arbitrary push refspec, no amend flow, and no non-draft PR creation.
 
@@ -339,6 +341,8 @@ repositories:
       - feature_branch
 ```
 
+In that example, `workflow_mode` tells agents to start with the `worktree` setup flow by default, while `allowed_workflow_modes` keeps both `worktree` and `feature_branch` available when the caller needs either one.
+
 If you want some repositories to stay on their base branch instead of creating a worktree or feature branch:
 
 ```yaml
@@ -359,7 +363,7 @@ repositories:
 
 If you want to bootstrap the config and then add this repository incrementally, a minimal progression is:
 
-1. Call `config_bootstrap` with defaults such as `feature_branch_pattern`, `workflow_mode`, or `allowed_workflow_modes`.
-2. Call `config_upsert_repo` with `repo_path`, and optionally `git_worktree_base_path`, `default_remote`, `allowed_branch_patterns`, `workflow_mode`, or `allowed_workflow_modes`.
+1. Call `config_bootstrap` with defaults such as `feature_branch_pattern`, the preferred `workflow_mode`, or `allowed_workflow_modes`.
+2. Call `config_upsert_repo` with `repo_path`, and optionally `git_worktree_base_path`, `default_remote`, `allowed_branch_patterns`, the preferred `workflow_mode`, or `allowed_workflow_modes`.
 3. Use the Git tools against that repository; they will reload the YAML on each call.
 ```

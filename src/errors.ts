@@ -45,7 +45,7 @@ export class BranchingPolicyViolationError extends Error {
         ? `workflow_mode '${workflowMode}'`
         : "no configured workflow policy";
     super(
-      `tool '${toolName}' is not allowed for repository '${repoPath}' under ${policySummary}; call 'git_repo_policy' and use an allowed setup flow`,
+      `tool '${toolName}' is not allowed for repository '${repoPath}' under ${policySummary}; call 'git_repo_policy' to inspect the preferred workflow_mode and allowed setup flows`,
     );
     this.name = "BranchingPolicyViolationError";
   }
