@@ -38,9 +38,14 @@ export class BranchNameNotAllowedError extends Error {
 }
 
 export class BranchingPolicyViolationError extends Error {
-  constructor(toolName: string, repoPath: string, actualMode: string) {
+  constructor(toolName: string, repoPath: string, workflowMode?: string, allowedWorkflowModes?: string[]) {
+    const policySummary = allowedWorkflowModes?.length
+      ? `allowed_workflow_modes '${allowedWorkflowModes.join(", ")}'`
+      : workflowMode
+        ? `workflow_mode '${workflowMode}'`
+        : "no configured workflow policy";
     super(
-      `tool '${toolName}' is not allowed for repository '${repoPath}' under workflow_mode '${actualMode}'; call 'git_repo_policy' and use the configured setup flow`,
+      `tool '${toolName}' is not allowed for repository '${repoPath}' under ${policySummary}; call 'git_repo_policy' to inspect the preferred workflow_mode and allowed setup flows`,
     );
     this.name = "BranchingPolicyViolationError";
   }

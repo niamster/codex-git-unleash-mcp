@@ -421,6 +421,18 @@ describe("bootstrapConfig", () => {
       new ConfigError(`config file '${configPath}' already exists`),
     );
   });
+
+  it("rejects defaults whose workflow preference is not allowed", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-bootstrap-invalid-workflow-defaults.yaml`);
+    tempPaths.push(configPath);
+
+    await expect(
+      bootstrapConfig(configPath, {
+        workflow_mode: "worktree",
+        allowed_workflow_modes: ["feature_branch"],
+      }),
+    ).rejects.toThrow("workflow_mode 'worktree' must be included in allowed_workflow_modes");
+  });
 });
 
 describe("upsertRepoConfig", () => {
@@ -433,6 +445,7 @@ describe("upsertRepoConfig", () => {
       repo_path: repoDir,
       allowed_branch_patterns: ["^owner\\/.*$"],
       workflow_mode: "worktree",
+      allowed_workflow_modes: ["feature_branch", "worktree"],
     });
 
     expect(result).toEqual({
@@ -441,6 +454,7 @@ describe("upsertRepoConfig", () => {
         path: repoDir,
         allowed_branch_patterns: ["^owner\\/.*$"],
         workflow_mode: "worktree",
+        allowed_workflow_modes: ["feature_branch", "worktree"],
       },
     });
 
@@ -448,6 +462,56 @@ describe("upsertRepoConfig", () => {
     expect(config.repositories).toHaveLength(1);
     expect(config.repositories[0]?.path).toBe(repoDir);
     expect(config.repositories[0]?.workflowMode).toBe("worktree");
+    expect(config.repositories[0]?.allowedWorkflowModes).toEqual(["feature_branch", "worktree"]);
+  });
+
+  it("rejects allowed workflow modes that combine current_branch with setup flows", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-invalid-workflow-modes-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-invalid-workflow-modes.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^owner\\/.*$"',
+        "    workflow_mode: current_branch",
+        "    allowed_workflow_modes:",
+        "      - current_branch",
+        "      - worktree",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow(
+      "allowed_workflow_modes cannot combine current_branch with feature_branch or worktree",
+    );
+  });
+
+  it("rejects workflow preferences that are not included in allowed workflow modes", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-mismatched-workflow-modes-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-mismatched-workflow-modes.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    allowed_branch_patterns:",
+        '      - "^owner\\/.*$"',
+        "    workflow_mode: worktree",
+        "    allowed_workflow_modes:",
+        "      - feature_branch",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow(
+      "workflow_mode 'worktree' must be included in allowed_workflow_modes",
+    );
   });
 
   it("updates an existing repo entry matched by canonical path", async () => {

@@ -133,7 +133,55 @@ describe("gitBranchCreateAndSwitch", () => {
     ).rejects.toBeInstanceOf(BranchNameNotAllowedError);
   });
 
-  it("rejects branch creation when workflow_mode excludes feature_branch", async () => {
+  it("allows branch creation when explicitly included in allowed workflow modes", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    const remoteDir = await createTempBareGitRepo();
+    tempPaths.push(repoDir, remoteDir);
+
+    await runCommand({ cwd: repoDir, command: "git", argv: ["remote", "add", "origin", remoteDir] });
+    await fs.writeFile(path.join(repoDir, "README.md"), "hello\n", "utf8");
+    await gitAdd(repo, ["README.md"]);
+    await gitCommit(repo, "add readme");
+    await gitPush(repo, "main");
+    await runCommand({
+      cwd: remoteDir,
+      command: "git",
+      argv: ["symbolic-ref", "HEAD", "refs/heads/main"],
+    });
+
+    const result = await gitBranchCreateAndSwitch(
+      {
+        ...repo,
+        workflowMode: "worktree",
+        allowedWorkflowModes: ["feature_branch", "worktree"],
+      },
+      { newBranch: "feature/from-explicit-branch" },
+    );
+
+    expect(result).toEqual({
+      branch: "feature/from-explicit-branch",
+      remote: "origin",
+      base: "main",
+    });
+  });
+
+  it("rejects branch creation when allowed workflow modes are omitted", async () => {
+    const { repoDir, repo } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await expect(
+      gitBranchCreateAndSwitch(
+        {
+          ...repo,
+          workflowMode: undefined,
+          allowedWorkflowModes: undefined,
+        },
+        { newBranch: "feature/from-unconfigured-policy" },
+      ),
+    ).rejects.toBeInstanceOf(BranchingPolicyViolationError);
+  });
+
+  it("rejects branch creation when allowed workflow modes exclude feature_branch", async () => {
     const { repoDir, repo } = await createTempGitRepo();
     tempPaths.push(repoDir);
 
@@ -142,6 +190,7 @@ describe("gitBranchCreateAndSwitch", () => {
         {
           ...repo,
           workflowMode: "worktree",
+          allowedWorkflowModes: ["worktree"],
         },
         { newBranch: "feature/from-branch-tool" },
       ),
@@ -157,6 +206,7 @@ describe("gitBranchCreateAndSwitch", () => {
         {
           ...repo,
           workflowMode: "current_branch",
+          allowedWorkflowModes: ["current_branch"],
         },
         { newBranch: "feature/from-current-branch" },
       ),

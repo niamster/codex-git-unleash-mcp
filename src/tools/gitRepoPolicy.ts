@@ -9,6 +9,7 @@ export type GitRepoPolicyResult = {
   defaultRemote?: string;
   allowDraftPrs: boolean;
   workflowMode?: string;
+  allowedWorkflowModes?: string[];
   policySource: string;
   repoLocalConfigPath?: string;
   repoOverridesApplied: boolean;
@@ -24,6 +25,7 @@ export function getGitRepoPolicy(repo: RepoPolicy): GitRepoPolicyResult {
     defaultRemote: repo.defaultRemote,
     allowDraftPrs: repo.allowDraftPrs,
     workflowMode: repo.workflowMode,
+    allowedWorkflowModes: repo.allowedWorkflowModes,
     policySource: repo.policySource,
     repoLocalConfigPath: repo.repoLocalConfigPath,
     repoOverridesApplied: repo.repoOverridesApplied ?? false,

@@ -117,6 +117,19 @@ describe("createServer", () => {
       },
     });
   });
+
+  it("describes setup tool workflow mode requirements", () => {
+    const server = createServer("/tmp/config.yaml") as unknown as {
+      _registeredTools: Record<string, { description?: string }>;
+    };
+
+    expect(server._registeredTools.git_branch_create_and_switch?.description).toContain(
+      "requires feature_branch in the effective allowed workflow modes",
+    );
+    expect(server._registeredTools.git_worktree_add?.description).toContain(
+      "requires worktree in the effective allowed workflow modes",
+    );
+  });
 });
 
 describe("loadRuntimeConfig", () => {

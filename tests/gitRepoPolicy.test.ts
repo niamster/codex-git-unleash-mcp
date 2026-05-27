@@ -15,6 +15,7 @@ describe("getGitRepoPolicy", () => {
       defaultRemote: "origin",
       allowDraftPrs: true,
       workflowMode: "feature_branch",
+      allowedWorkflowModes: ["feature_branch", "worktree"],
       policySource: "global",
       repoOverridesApplied: true,
     };
@@ -28,6 +29,7 @@ describe("getGitRepoPolicy", () => {
       defaultRemote: "origin",
       allowDraftPrs: true,
       workflowMode: "feature_branch",
+      allowedWorkflowModes: ["feature_branch", "worktree"],
       policySource: "global",
       repoLocalConfigPath: undefined,
       repoOverridesApplied: true,

@@ -21,6 +21,7 @@ import { gitSyncBase } from "./tools/gitSyncBase.js";
 import { gitWorktreeAdd } from "./tools/gitWorktreeAdd.js";
 
 const workflowModeSchema = z.enum(["worktree", "feature_branch", "current_branch"]);
+const allowedWorkflowModesSchema = z.array(workflowModeSchema).min(1);
 
 const configPolicyFields = {
   allowed_branch_patterns: z.array(z.string().min(1)).min(1).optional(),
@@ -29,6 +30,7 @@ const configPolicyFields = {
   default_remote: z.string().min(1).optional(),
   allow_draft_prs: z.boolean().optional(),
   workflow_mode: workflowModeSchema.optional(),
+  allowed_workflow_modes: allowedWorkflowModesSchema.optional(),
 };
 
 const CLOSED_WORLD_READ_ONLY_TOOL: ToolAnnotations = {
@@ -237,7 +239,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_branch_create_and_switch",
-    "Create a new local branch from an explicit or detected upstream base branch for an authorized repository, then switch to it. This tool requires a clean worktree, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
+    "Create a new local branch from an explicit or detected upstream base branch for an authorized repository, then switch to it. This tool requires a clean worktree, requires feature_branch in the effective allowed workflow modes, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
     {
       repo_path: z.string().min(1),
       new_branch: z.string(),
@@ -261,7 +263,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_branch_switch",
-    "Switch to an existing local branch in an authorized repository. This tool mutates repository state, requires the worktree to be clean, requires the target branch name to match configured allowed patterns, is only allowed when workflow_mode is unset or feature_branch, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
+    "Switch to an existing local branch in an authorized repository. This tool mutates repository state, requires the worktree to be clean, requires the target branch name to match configured allowed patterns, requires feature_branch in the effective allowed workflow modes, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
     {
       repo_path: z.string().min(1),
       branch: z.string(),
@@ -351,7 +353,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "git_worktree_add",
-    "Create a linked worktree at an explicit absolute path for a new local branch in an authorized repository. This tool mutates repository state, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and enforces the configured worktree base path when one exists.",
+    "Create a linked worktree at an explicit absolute path for a new local branch in an authorized repository. This tool mutates repository state, requires worktree in the effective allowed workflow modes, validates the requested branch name against configured full-match patterns, fetches the chosen base branch first, and enforces the configured worktree base path when one exists.",
     {
       repo_path: z.string().min(1),
       path: z.string().min(1),

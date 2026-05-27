@@ -363,6 +363,7 @@ Validation:
 - `new_branch` must be non-empty after trimming
 - `new_branch` must match at least one configured allowed branch pattern
 - `new_branch` must not already exist locally
+- effective allowed workflow modes must include `worktree`
 - resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - if `branch` is provided, treat it as the upstream base branch name
 - otherwise resolve the base branch from remote HEAD first, with GitHub default-branch lookup as a fallback
@@ -387,6 +388,7 @@ Validation:
 - `new_branch` must be non-empty after trimming
 - `new_branch` must match at least one configured allowed branch pattern
 - `new_branch` must not already exist
+- effective allowed workflow modes must include `feature_branch`
 - resolve the remote by preferring configured `default_remote`, then the current branch remote, then `origin`
 - if `branch` is provided, treat it as the upstream base branch name
 - otherwise resolve the base branch from remote HEAD first, with GitHub default-branch lookup as a fallback
@@ -407,7 +409,7 @@ Validation:
 
 - repository path is required
 - repository must be allowlisted
-- `workflow_mode` must be unset or `feature_branch`
+- effective allowed workflow modes must include `feature_branch`
 - worktree must be clean
 - `branch` must be non-empty after trimming
 - `branch` must match the configured allowed branch patterns
