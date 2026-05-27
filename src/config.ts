@@ -115,6 +115,7 @@ export async function loadRepoLocalPolicy(
     allowDraftPrs: parsed.allow_draft_prs ?? true,
     workflowMode: parsed.workflow_mode,
     allowedWorkflowModes: resolveAllowedWorkflowModes(parsed.allowed_workflow_modes, parsed.workflow_mode),
+    allowedWorkflowModesConfigured: parsed.allowed_workflow_modes !== undefined,
     policySource: "repo_local",
     repoLocalConfigPath: configPath,
     repoLocalConfigRelativePath: REPO_LOCAL_CONFIG_FILENAME,
@@ -222,6 +223,8 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       repo.allowed_workflow_modes ?? config.defaults?.allowed_workflow_modes,
       workflowMode,
     );
+    const allowedWorkflowModesConfigured =
+      repo.allowed_workflow_modes !== undefined || config.defaults?.allowed_workflow_modes !== undefined;
     const repoOverrides = buildRepoOverrides({
       allowedBranchPatterns:
         repo.allowed_branch_patterns === undefined ? undefined : compileBranchPatterns(repo.allowed_branch_patterns, repo.path),
@@ -231,6 +234,7 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       allowDraftPrs: repo.allow_draft_prs,
       workflowMode: repo.workflow_mode,
       allowedWorkflowModes: resolveRepoAllowedWorkflowModesOverride(repo),
+      allowedWorkflowModesConfigured: repo.allowed_workflow_modes !== undefined,
     });
 
     repositories.push({
@@ -244,6 +248,7 @@ async function normalizeConfig(config: EditableConfig): Promise<Config> {
       allowDraftPrs: repo.allow_draft_prs ?? config.defaults?.allow_draft_prs ?? true,
       workflowMode,
       allowedWorkflowModes,
+      allowedWorkflowModesConfigured,
       policySource: "global",
       repoOverrides,
       repoOverridesApplied: repoOverrides !== undefined,
@@ -314,6 +319,7 @@ function buildRepoOverrides(input: RepoPolicyOverrides): RepoPolicyOverrides | u
     ...(input.allowDraftPrs !== undefined ? { allowDraftPrs: input.allowDraftPrs } : {}),
     ...(input.workflowMode !== undefined ? { workflowMode: input.workflowMode } : {}),
     ...(input.allowedWorkflowModes !== undefined ? { allowedWorkflowModes: input.allowedWorkflowModes } : {}),
+    ...(input.allowedWorkflowModesConfigured ? { allowedWorkflowModesConfigured: input.allowedWorkflowModesConfigured } : {}),
   };
 
   return Object.keys(overrides).length > 0 ? overrides : undefined;
@@ -326,7 +332,9 @@ function applyRepoOverrides(
   const workflowMode = repoOverrides.workflowMode ?? repoLocalPolicy.workflowMode;
   const allowedWorkflowModes =
     repoOverrides.allowedWorkflowModes ??
-    (repoOverrides.workflowMode !== undefined ? [repoOverrides.workflowMode] : repoLocalPolicy.allowedWorkflowModes);
+    (repoOverrides.workflowMode !== undefined && !repoLocalPolicy.allowedWorkflowModesConfigured
+      ? [repoOverrides.workflowMode]
+      : repoLocalPolicy.allowedWorkflowModes);
   const mergedPolicy: RepoPolicy = {
     ...repoLocalPolicy,
     ...(repoOverrides.allowedBranchPatterns !== undefined
@@ -338,6 +346,8 @@ function applyRepoOverrides(
     ...(repoOverrides.allowDraftPrs !== undefined ? { allowDraftPrs: repoOverrides.allowDraftPrs } : {}),
     ...(workflowMode !== undefined ? { workflowMode } : {}),
     ...(allowedWorkflowModes !== undefined ? { allowedWorkflowModes } : {}),
+    allowedWorkflowModesConfigured:
+      repoOverrides.allowedWorkflowModesConfigured ?? repoLocalPolicy.allowedWorkflowModesConfigured,
     repoOverridesApplied: true,
   };
 
@@ -352,10 +362,6 @@ function applyRepoOverrides(
 function resolveRepoAllowedWorkflowModesOverride(repo: EditableRepoPolicy): WorkflowMode[] | undefined {
   if (repo.allowed_workflow_modes !== undefined) {
     return resolveAllowedWorkflowModes(repo.allowed_workflow_modes, repo.workflow_mode);
-  }
-
-  if (repo.workflow_mode !== undefined) {
-    return [repo.workflow_mode];
   }
 
   return undefined;

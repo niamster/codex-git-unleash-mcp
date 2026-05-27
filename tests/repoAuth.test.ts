@@ -181,6 +181,44 @@ describe("resolveAllowedRepo", () => {
     );
   });
 
+  it("preserves repo-local allowed workflow modes when global overrides only set workflow preference", async () => {
+    const { repoDir } = await createTempGitRepo();
+    tempPaths.push(repoDir);
+
+    await fs.writeFile(
+      path.join(repoDir, ".git-unleash.yaml"),
+      [
+        "allowed_branch_patterns:",
+        '  - "^owner/.+$"',
+        "workflow_mode: feature_branch",
+        "allowed_workflow_modes:",
+        "  - feature_branch",
+        "  - worktree",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-repo-local-workflow-preference.yaml`);
+    tempPaths.push(configPath);
+
+    await fs.writeFile(
+      configPath,
+      [
+        "repositories:",
+        `  - path: ${repoDir}`,
+        "    workflow_mode: worktree",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+    const resolvedRepo = await resolveAllowedRepo(config, repoDir);
+
+    expect(resolvedRepo.workflowMode).toBe("worktree");
+    expect(resolvedRepo.allowedWorkflowModes).toEqual(["feature_branch", "worktree"]);
+    expect(resolvedRepo.repoOverridesApplied).toBe(true);
+  });
+
   it("does not apply top-level defaults over repo-local policy", async () => {
     const { repoDir } = await createTempGitRepo();
     tempPaths.push(repoDir);
