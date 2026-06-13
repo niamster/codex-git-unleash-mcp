@@ -21,6 +21,7 @@ describe("getRegisteredToolNames", () => {
       "git_repo_policy",
       "git_status",
       "git_add",
+      "git_stage",
       "git_commit",
       "git_branch_create_and_switch",
       "git_branch_switch",
@@ -66,6 +67,11 @@ describe("createServer", () => {
         openWorldHint: false,
       },
       git_add: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      git_stage: {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: false,
