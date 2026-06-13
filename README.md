@@ -19,6 +19,7 @@ Current tool surface:
 - `git_repo_policy`
 - `git_status`
 - `git_add`
+- `git_stage`
 - `git_commit`
 - `git_fetch`
 - `git_sync_base`
@@ -107,7 +108,7 @@ Notes:
 - keep branch patterns simple: advanced group syntax, backreferences, and nested quantifiers are rejected at config load time
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited `defaults`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, the preferred `workflow_mode`, `allowed_workflow_modes`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
-- `git_add`, `git_commit`, `git_sync_base`, `git_pull_current_branch`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
+- `git_add`, `git_stage`, `git_commit`, `git_sync_base`, `git_pull_current_branch`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
 - `git_fetch` only requires the repository to be authorized, fetches from the resolved remote, updates local fetch metadata and remote-tracking state only, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_sync_base` requires a clean worktree, fetches the detected remote base branch, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs
 - `git_pull_current_branch` requires a clean worktree, fetches the current branch from the resolved remote, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs
@@ -201,7 +202,7 @@ The intended happy path is:
 8. Call `git_worktree_add` when the preferred or selected setup flow is `worktree` and you need a separate linked worktree on a new allowed branch at an explicit absolute path.
 9. Call `git_sync_base` when you need to bring the detected remote base branch into the current allowed branch without exposing generic merge controls.
 10. Call `git_pull_current_branch` when you need to bring the current branch's resolved remote branch into the current allowed branch without exposing generic merge controls.
-11. Call `git_add` with explicit repository-relative paths.
+11. Call `git_add` or `git_stage` with explicit repository-relative paths.
 12. Call `git_commit` with a normal commit message.
 13. Call `git_push` to push the current branch to the resolved remote.
 14. Call `gh_pr_create_draft` to open a draft PR against an explicit base or the detected default base branch.
@@ -293,6 +294,7 @@ Once registered, Codex should be able to use:
 - `git_repo_policy` to inspect the configured path, canonical path, allowed branch patterns, suggested feature-branch pattern, configured worktree base path, workflow preference, allowed workflow modes, default remote, draft-PR setting, and policy source for an authorized repository
 - `git_status` for an authorized repository
 - `git_add` for repository-relative paths inside an authorized repository; it rejects absolute paths and repository-escaping paths like `../x`
+- `git_stage` as a discoverability alias for `git_add` when the caller is looking for "stage" rather than "add"
 - `git_commit` with a normal commit message on an allowed branch; it rejects empty commit messages and empty commits
 - `git_fetch` to fetch a plain branch name from the detected remote; it updates local fetch metadata and remote-tracking state only, does not allow arbitrary fetch arguments or refspecs, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_sync_base` to merge the detected remote base branch into the current allowed branch; it requires a clean worktree, does not allow arbitrary refs or merge flags, and aborts on conflict before returning an error

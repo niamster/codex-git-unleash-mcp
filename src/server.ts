@@ -58,6 +58,7 @@ export function getRegisteredToolNames(): string[] {
     "git_repo_policy",
     "git_status",
     "git_add",
+    "git_stage",
     "git_commit",
     "git_branch_create_and_switch",
     "git_branch_switch",
@@ -189,29 +190,8 @@ export function createServer(configPath: string): McpServer {
     },
   );
 
-  server.tool(
-    "git_add",
-    "Stage a constrained list of repository-relative paths in an authorized repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and rejects absolute or repository-escaping paths.",
-    {
-      repo_path: z.string().min(1),
-      paths: z.array(z.string().min(1)).min(1),
-    },
-    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
-    async ({ repo_path, paths }) => {
-      const repo = await resolveRuntimeRepo(configPath, repo_path);
-      await requireAllowedBranch(repo);
-      const result = await gitAdd(repo, paths);
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    },
-  );
+  registerGitAddLikeTool(server, configPath, "git_add");
+  registerGitAddLikeTool(server, configPath, "git_stage");
 
   server.tool(
     "git_commit",
@@ -426,6 +406,37 @@ export function createServer(configPath: string): McpServer {
   );
 
   return server;
+}
+
+function registerGitAddLikeTool(server: McpServer, configPath: string, toolName: "git_add" | "git_stage"): void {
+  const description =
+    toolName === "git_add"
+      ? "Stage a constrained list of repository-relative paths in an authorized repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and rejects absolute or repository-escaping paths."
+      : "Alias for git_add. Stage a constrained list of repository-relative paths in an authorized repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, and rejects absolute or repository-escaping paths.";
+
+  server.tool(
+    toolName,
+    description,
+    {
+      repo_path: z.string().min(1),
+      paths: z.array(z.string().min(1)).min(1),
+    },
+    CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
+    async ({ repo_path, paths }) => {
+      const repo = await resolveRuntimeRepo(configPath, repo_path);
+      await requireAllowedBranch(repo);
+      const result = await gitAdd(repo, paths);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
 }
 
 async function resolveRuntimeRepo(
