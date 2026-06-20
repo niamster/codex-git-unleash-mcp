@@ -39,7 +39,7 @@ export function gitWorktreeAddArgs(worktreePath: string, newBranch: string, star
 }
 
 export function gitSwitchBranchArgs(branch: string): string[] {
-  return ["checkout", branch];
+  return ["switch", "--", branch];
 }
 
 export function gitRemoteGetUrlArgs(remote: string): string[] {

@@ -36,8 +36,10 @@ The server is intentionally not a generic `git` or `gh` proxy. Inputs are struct
 
 - Node.js
 - npm
-- `git`
+- `git` 2.23 or newer
 - `gh`
+
+`git_branch_switch` uses `git switch` rather than `git checkout`, so Git 2.23+ is the supported baseline for branch switching.
 
 ## Install
 

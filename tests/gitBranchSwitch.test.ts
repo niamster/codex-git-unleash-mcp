@@ -169,6 +169,6 @@ describe("gitBranchSwitch", () => {
   });
 
   it("uses a fixed branch switch argument shape", () => {
-    expect(gitSwitchBranchArgs("feature/switch-me")).toEqual(["checkout", "feature/switch-me"]);
+    expect(gitSwitchBranchArgs("feature/switch-me")).toEqual(["switch", "--", "feature/switch-me"]);
   });
 });
