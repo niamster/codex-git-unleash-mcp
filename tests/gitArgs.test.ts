@@ -51,7 +51,7 @@ describe("git argument builders", () => {
   });
 
   it("builds constrained git branch switch arguments", () => {
-    expect(gitSwitchBranchArgs("feature/test-pr")).toEqual(["checkout", "feature/test-pr"]);
+    expect(gitSwitchBranchArgs("feature/test-pr")).toEqual(["switch", "--", "feature/test-pr"]);
   });
 
   it("builds constrained git worktree add arguments", () => {
