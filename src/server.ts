@@ -90,7 +90,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "config_bootstrap",
-    "Create the initial MCP config file when it does not yet exist. This tool writes a minimal valid YAML config and does not apply changes to the current server process; restart the MCP server after use.",
+    "Create the initial MCP config file when it does not yet exist. This tool writes a minimal valid YAML config; runtime tools load the new configuration on their next call.",
     configPolicyFields,
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async (input) => {
@@ -104,7 +104,6 @@ export function createServer(configPath: string): McpServer {
               {
                 configPath,
                 repositories: nextConfig.repositories.length,
-                restartRequired: true,
               },
               null,
               2,
@@ -117,7 +116,7 @@ export function createServer(configPath: string): McpServer {
 
   server.tool(
     "config_upsert_repo",
-    "Add or update one repository entry in the MCP config file. This tool validates the resulting YAML against the existing schema and does not hot-reload the current server process; restart the MCP server after use.",
+    "Add or update one repository entry in the MCP config file. This tool validates the resulting YAML against the existing schema; runtime tools load the new configuration on their next call.",
     {
       repo_path: z.string().min(1),
       ...configPolicyFields,
@@ -135,7 +134,6 @@ export function createServer(configPath: string): McpServer {
                 configPath,
                 action: result.action,
                 repo: result.repo,
-                restartRequired: true,
               },
               null,
               2,
