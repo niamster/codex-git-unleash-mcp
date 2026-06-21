@@ -111,6 +111,8 @@ Notes:
 - each repository must end up with at least one effective allowed branch pattern, either from the repo entry or inherited `defaults`
 - `git_repo_policy` returns the configured branch patterns and related repository defaults for an authorized repository, including `feature_branch_pattern`, `git_worktree_base_path`, the preferred `workflow_mode`, `allowed_workflow_modes`, the policy source, whether repo overrides were applied, and the repo-local config path when applicable
 - `git_add`, `git_stage`, `git_commit`, `git_sync_base`, `git_pull_current_branch`, `git_push`, and `gh_pr_create_draft` require the current branch to match one of the configured patterns
+- repository-mutating Git and GitHub tools are serialized per worktree inside the MCP process, and allowed-branch mutations re-check the current branch before returning success
+- that process-local lock does not stop a different process from changing the worktree concurrently, but branch drift is reported as an error instead of being reported as a clean success
 - `git_fetch` only requires the repository to be authorized, fetches from the resolved remote, updates local fetch metadata and remote-tracking state only, and uses an explicit branch when provided or the detected base branch otherwise
 - `git_sync_base` requires a clean worktree, fetches the detected remote base branch, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs
 - `git_pull_current_branch` requires a clean worktree, fetches the current branch from the resolved remote, merges only that remote-tracking ref into the current allowed branch, and aborts the merge before returning an error if a conflict occurs

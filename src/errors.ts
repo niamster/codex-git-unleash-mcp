@@ -58,6 +58,16 @@ export class DetachedHeadError extends Error {
   }
 }
 
+export class BranchChangedDuringMutationError extends Error {
+  constructor(expectedBranch: string, actualBranch: string | null, repoPath: string) {
+    const actualSummary = actualBranch ? `'${actualBranch}'` : "detached HEAD";
+    super(
+      `repository '${repoPath}' changed branches during the mutation: expected '${expectedBranch}', found ${actualSummary}; rerun the tool after restoring the authorized branch`,
+    );
+    this.name = "BranchChangedDuringMutationError";
+  }
+}
+
 export class PathValidationError extends Error {
   constructor(message: string) {
     super(message);
