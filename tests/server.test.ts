@@ -136,6 +136,47 @@ describe("createServer", () => {
       "requires worktree in the effective allowed workflow modes",
     );
   });
+
+  it("omits restartRequired from config tool responses", async () => {
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-tools-${Date.now()}.yaml`);
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-config-tools-repo-"));
+    tempPaths.push(configPath, repoDir);
+
+    const server = createServer(configPath) as unknown as {
+      _registeredTools: Record<
+        string,
+        {
+          handler: (input: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text?: string }> }>;
+        }
+      >;
+    };
+
+    const bootstrapResult = await server._registeredTools.config_bootstrap!.handler({});
+    expect(JSON.parse(bootstrapResult.content[0]!.text!)).toEqual({
+      configPath,
+      repositories: 0,
+    });
+
+    const upsertResult = await server._registeredTools.config_upsert_repo!.handler({ repo_path: repoDir });
+    expect(JSON.parse(upsertResult.content[0]!.text!)).toEqual({
+      configPath,
+      action: "created",
+      repo: { path: repoDir },
+    });
+  });
+
+  it("describes automatic config reload behavior", () => {
+    const server = createServer("/tmp/config.yaml") as unknown as {
+      _registeredTools: Record<string, { description?: string }>;
+    };
+
+    expect(server._registeredTools.config_bootstrap?.description).toContain(
+      "runtime tools load the new configuration on their next call",
+    );
+    expect(server._registeredTools.config_upsert_repo?.description).toContain(
+      "runtime tools load the new configuration on their next call",
+    );
+  });
 });
 
 describe("loadRuntimeConfig", () => {
