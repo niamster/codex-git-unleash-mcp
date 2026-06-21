@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { bootstrapConfig, loadOptionalConfig, upsertRepoConfig } from "./config.js";
 import { ConfigError, RepoNotAllowedError } from "./errors.js";
-import { requireAllowedBranch } from "./auth/branchAuth.js";
+import { withAllowedBranchMutation, withRepoMutationLock } from "./auth/repoMutation.js";
 import { requireTrustedRepoPolicy } from "./auth/repoPolicyTrust.js";
 import { resolveAllowedRepo } from "./auth/repoAuth.js";
 import { gitAdd } from "./tools/gitAdd.js";
@@ -201,8 +201,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, message }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      await requireAllowedBranch(repo);
-      const result = await gitCommit(repo, message);
+      const result = await withAllowedBranchMutation(repo, async () => await gitCommit(repo, message));
 
       return {
         content: [
@@ -226,7 +225,9 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, new_branch, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitBranchCreateAndSwitch(repo, { newBranch: new_branch, branch });
+      const result = await withRepoMutationLock(repo, async () =>
+        await gitBranchCreateAndSwitch(repo, { newBranch: new_branch, branch }),
+      );
 
       return {
         content: [
@@ -249,7 +250,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitBranchSwitch(repo, branch);
+      const result = await withRepoMutationLock(repo, async () => await gitBranchSwitch(repo, branch));
 
       return {
         content: [
@@ -272,7 +273,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitFetch(repo, { branch });
+      const result = await withRepoMutationLock(repo, async () => await gitFetch(repo, { branch }));
 
       return {
         content: [
@@ -294,7 +295,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitSyncBase(repo);
+      const result = await withAllowedBranchMutation(repo, async () => await gitSyncBase(repo));
 
       return {
         content: [
@@ -316,7 +317,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitPullCurrentBranch(repo);
+      const result = await withAllowedBranchMutation(repo, async () => await gitPullCurrentBranch(repo));
 
       return {
         content: [
@@ -341,7 +342,9 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, path, new_branch, branch }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const result = await gitWorktreeAdd(repo, { path, newBranch: new_branch, branch });
+      const result = await withRepoMutationLock(repo, async () =>
+        await gitWorktreeAdd(repo, { path, newBranch: new_branch, branch }),
+      );
 
       return {
         content: [
@@ -363,8 +366,7 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const branch = await requireAllowedBranch(repo);
-      const result = await gitPush(repo, branch);
+      const result = await withAllowedBranchMutation(repo, async (branch) => await gitPush(repo, branch));
 
       return {
         content: [
@@ -389,8 +391,9 @@ export function createServer(configPath: string): McpServer {
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, title, body, base }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      const branch = await requireAllowedBranch(repo);
-      const result = await ghPrCreateDraft(repo, branch, { title, body, base });
+      const result = await withAllowedBranchMutation(repo, async (branch) =>
+        await ghPrCreateDraft(repo, branch, { title, body, base }),
+      );
 
       return {
         content: [
@@ -422,8 +425,7 @@ function registerGitAddLikeTool(server: McpServer, configPath: string, toolName:
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, paths }) => {
       const repo = await resolveRuntimeRepo(configPath, repo_path);
-      await requireAllowedBranch(repo);
-      const result = await gitAdd(repo, paths);
+      const result = await withAllowedBranchMutation(repo, async () => await gitAdd(repo, paths));
 
       return {
         content: [
