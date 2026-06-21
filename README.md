@@ -57,6 +57,10 @@ If that file does not exist yet, the server still starts and exposes the full to
 
 `config_bootstrap` and `config_upsert_repo` can still create or update the YAML when you want an external allowlist.
 
+### Configuration trust model
+
+`config_bootstrap` and `config_upsert_repo` are administrative conveniences, not security controls. A caller that can invoke them can create or widen repository policy, and runtime tools will use the changed policy on their next call. Hosts should expose these tools only to trusted callers; otherwise, omit them from the available tool set or require host-side approval for each invocation.
+
 Example:
 
 ```yaml
@@ -368,6 +372,8 @@ repositories:
 ```
 
 If you want to bootstrap the config and then add this repository incrementally, a minimal progression is:
+
+Use this progression only when the caller is trusted to change MCP policy. Exposing either configuration mutation tool delegates that authority to its caller.
 
 1. Call `config_bootstrap` with defaults such as `feature_branch_pattern`, the preferred `workflow_mode`, or `allowed_workflow_modes`.
 2. Call `config_upsert_repo` with `repo_path`, and optionally `git_worktree_base_path`, `default_remote`, `allowed_branch_patterns`, the preferred `workflow_mode`, or `allowed_workflow_modes`.
