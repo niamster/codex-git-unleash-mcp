@@ -28,15 +28,25 @@ const repoPolicySchema = policyDefaultsSchema.extend({
   path: z.string().min(1),
 });
 
-const repoLocalPolicySchema = z.object({
-  allowed_branch_patterns: z.array(z.string().min(1)).nonempty(),
-  feature_branch_pattern: z.string().min(1).optional(),
-  git_worktree_base_path: z.string().min(1).optional(),
-  default_remote: z.string().min(1).optional(),
-  allow_draft_prs: z.boolean().optional(),
-  workflow_mode: workflowModeSchema.optional(),
-  allowed_workflow_modes: allowedWorkflowModesSchema.optional(),
-});
+const repoLocalPolicySchema = z
+  .object({
+    allowed_branch_patterns: z.array(z.string().min(1)).nonempty(),
+    feature_branch_pattern: z.string().min(1).optional(),
+    git_worktree_base_path: z.string().min(1).optional(),
+    default_remote: z.string().min(1).optional(),
+    allow_draft_prs: z.boolean().optional(),
+    workflow_mode: workflowModeSchema.optional(),
+    allowed_workflow_modes: allowedWorkflowModesSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.default_remote !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["default_remote"],
+        message: "repo-local config must not set default_remote",
+      });
+    }
+  });
 
 const configSchema = z.object({
   defaults: policyDefaultsSchema.optional(),
@@ -100,10 +110,6 @@ export async function loadRepoLocalPolicy(
     throw new ConfigError(
       `repo-local config '${configPath}' is invalid: ${error instanceof Error ? error.message : String(error)}`,
     );
-  }
-
-  if (parsed.default_remote !== undefined) {
-    throw new ConfigError(`repo-local config '${configPath}' must not set default_remote`);
   }
 
   const repoLocalPolicy: RepoPolicy = {
