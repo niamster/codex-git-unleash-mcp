@@ -3,6 +3,7 @@ import { getRepoDefaultBranch } from "../exec/gh.js";
 import {
   getBranchRemote,
   getCurrentBranch,
+  getLocalRemoteHeadBranch,
   getRemoteHeadBranch,
   remoteExists,
 } from "../exec/git.js";
@@ -35,7 +36,18 @@ export async function resolveRepoRemote(
   throw new RemoteResolutionError(repo.worktreePath);
 }
 
-export async function resolveRepoBaseBranch(repo: RepoPolicy, remote: string): Promise<string> {
+export async function resolveRepoBaseBranch(
+  repo: RepoPolicy,
+  remote: string,
+  options: { preferLocal?: boolean } = {},
+): Promise<string> {
+  if (options.preferLocal) {
+    const localRemoteHeadBranch = await getLocalRemoteHeadBranch(repo.worktreePath, remote);
+    if (localRemoteHeadBranch) {
+      return localRemoteHeadBranch;
+    }
+  }
+
   const remoteHeadBranch = await getRemoteHeadBranch(repo.worktreePath, remote);
   if (remoteHeadBranch) {
     return remoteHeadBranch;

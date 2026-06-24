@@ -54,6 +54,10 @@ export function gitRemoteHeadArgs(remote: string): string[] {
   return ["ls-remote", "--symref", remote, "HEAD"];
 }
 
+export function gitRemoteTrackingHeadArgs(remote: string): string[] {
+  return ["symbolic-ref", "--short", `refs/remotes/${remote}/HEAD`];
+}
+
 export function gitRevParseVerifyArgs(spec: string): string[] {
   return ["rev-parse", "--verify", spec];
 }
@@ -242,6 +246,21 @@ export async function getRemoteHeadBranch(cwd: string, remote: string): Promise<
 
     const match = /^ref:\s+refs\/heads\/(.+)\s+HEAD$/.exec(headLine);
     return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getLocalRemoteHeadBranch(cwd: string, remote: string): Promise<string | null> {
+  try {
+    const result = await runCommand({
+      cwd,
+      command: "git",
+      argv: gitRemoteTrackingHeadArgs(remote),
+    });
+    const shortRef = result.stdout.trim();
+    const prefix = `${remote}/`;
+    return shortRef.startsWith(prefix) ? shortRef.slice(prefix.length) : null;
   } catch {
     return null;
   }
