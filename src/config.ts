@@ -6,6 +6,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 
 import { ConfigError } from "./errors.js";
+import { canonicalizeProspectivePath } from "./pathCanonicalization.js";
 import type { Config, RepoPolicy, RepoPolicyOverrides, WorkflowMode } from "./types/config.js";
 
 export const REPO_LOCAL_CONFIG_FILENAME = ".git-unleash.yaml";
@@ -496,33 +497,19 @@ async function resolveGitWorktreeBasePath(
   const expandedPath = expandHomeDir(inputPath);
   if (!path.isAbsolute(expandedPath)) {
     if (options.repoRoot) {
-      return await canonicalizeProspectivePath(path.resolve(options.repoRoot, expandedPath));
+      return await canonicalizeProspectiveConfigPath(path.resolve(options.repoRoot, expandedPath));
     }
 
     throw new ConfigError(`git_worktree_base_path '${inputPath}' must be absolute or start with '~/'`);
   }
 
-  return await canonicalizeProspectivePath(expandedPath);
+  return await canonicalizeProspectiveConfigPath(expandedPath);
 }
 
-async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
-  const parts: string[] = [];
-  let currentPath = path.resolve(inputPath);
-
-  while (true) {
-    try {
-      const canonicalBase = await fs.realpath(currentPath);
-      return path.join(canonicalBase, ...parts.reverse());
-    } catch {
-      const parentPath = path.dirname(currentPath);
-      if (parentPath === currentPath) {
-        throw new ConfigError(`path '${inputPath}' could not be resolved`);
-      }
-
-      parts.push(path.basename(currentPath));
-      currentPath = parentPath;
-    }
-  }
+async function canonicalizeProspectiveConfigPath(inputPath: string): Promise<string> {
+  return await canonicalizeProspectivePath(inputPath, (unresolvedPath) => {
+    return new ConfigError(`path '${unresolvedPath}' could not be resolved`);
+  });
 }
 
 function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {

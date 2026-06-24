@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 
 import { PathValidationError } from "../errors.js";
+import { canonicalizeProspectivePath } from "../pathCanonicalization.js";
 
 export function validateRepoRelativePaths(repoRoot: string, inputPaths: string[]): string[] {
   if (inputPaths.length === 0) {
@@ -21,7 +21,7 @@ export async function validateWorktreePath(inputPath: string): Promise<string> {
   }
 
   const resolvedPath = path.resolve(inputPath);
-  const canonicalWorktreePath = await canonicalizeProspectivePath(resolvedPath);
+  const canonicalWorktreePath = await canonicalizeProspectiveWorktreePath(resolvedPath);
 
   return canonicalWorktreePath;
 }
@@ -36,7 +36,7 @@ export async function validateWorktreePathAgainstBasePath(
     return canonicalWorktreePath;
   }
 
-  const canonicalBasePath = await canonicalizeProspectivePath(path.resolve(basePath));
+  const canonicalBasePath = await canonicalizeProspectiveWorktreePath(path.resolve(basePath));
   const relativeToBase = path.relative(canonicalBasePath, canonicalWorktreePath);
   if (
     relativeToBase === ".." ||
@@ -83,22 +83,8 @@ function validateRepoRelativePath(repoRoot: string, inputPath: string): string {
   return relativeToRoot === "" ? "." : relativeToRoot;
 }
 
-async function canonicalizeProspectivePath(inputPath: string): Promise<string> {
-  const parts: string[] = [];
-  let currentPath = inputPath;
-
-  while (true) {
-    try {
-      const canonicalBase = await fs.realpath(currentPath);
-      return path.join(canonicalBase, ...parts.reverse());
-    } catch {
-      const parentPath = path.dirname(currentPath);
-      if (parentPath === currentPath) {
-        throw new PathValidationError(`worktree path '${inputPath}' could not be resolved`);
-      }
-
-      parts.push(path.basename(currentPath));
-      currentPath = parentPath;
-    }
-  }
+async function canonicalizeProspectiveWorktreePath(inputPath: string): Promise<string> {
+  return await canonicalizeProspectivePath(inputPath, (unresolvedPath) => {
+    return new PathValidationError(`worktree path '${unresolvedPath}' could not be resolved`);
+  });
 }
