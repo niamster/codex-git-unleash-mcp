@@ -287,6 +287,49 @@ export SSH_AUTH_SOCK=/path/to/ssh-agent.sock
 
 On macOS, the wrapper will also try `launchctl getenv SSH_AUTH_SOCK` before failing.
 
+For GUI-launched Codex on macOS, a stable SSH agent socket is usually more reliable than the system `SSH_AUTH_SOCK`. The system socket can be dynamic, and `launchctl setenv` values do not survive a reboot. If you use an agent with a stable socket, configure the MCP server with that socket explicitly.
+
+For example, 1Password's SSH agent exposes this socket on macOS:
+
+```text
+/Users/<user>/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock
+```
+
+Add the socket to your Codex config:
+
+```toml
+[mcp_servers.git_unleash.env]
+SSH_AUTH_SOCK = "/Users/<user>/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+GIT_UNLEASH_SSH_AUTH_SOCK = "/Users/<user>/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+```
+
+Then verify that the agent exposes the key Git is configured to use for SSH signing:
+
+```bash
+SSH_AUTH_SOCK="/Users/<user>/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ssh-add -L
+git config --get user.signingkey
+```
+
+The public key shown by `ssh-add -L` must match the public key configured by `user.signingkey`. The comments may differ, but the key type and key body must match.
+
+If you use Apple's built-in SSH agent and Keychain integration, keep in mind that this SSH config:
+
+```sshconfig
+Host *
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+does not necessarily load identities into the agent at login. It can be lazy and load the key only after an SSH operation runs. That means a preflight like `ssh-add -L` can still report no identities immediately after a reboot. In that setup, either load the key before starting Codex or use a stable agent socket such as 1Password, Secretive, or another dedicated SSH agent.
+
+Troubleshooting checklist:
+
+- If startup fails with `SSH_AUTH_SOCK is not set`, the MCP host did not pass a socket and the wrapper could not recover one through `GIT_UNLEASH_SSH_AUTH_SOCK` or `launchctl getenv SSH_AUTH_SOCK`.
+- If startup fails with `ssh-agent is reachable ... but it is not returning any identities`, the socket is valid but `ssh-add -L` cannot see a loaded key.
+- If Terminal Git works but MCP startup fails after reboot, check whether Terminal lazily loaded the key after the MCP server had already started.
+- If you use a stable agent socket, prefer setting both `SSH_AUTH_SOCK` and `GIT_UNLEASH_SSH_AUTH_SOCK` in the MCP server config so the wrapper and child Git processes agree on the same agent.
+
 If you need an exact PATH instead of the built-in fallback behavior, you can still register the server with an explicit environment override:
 
 ```bash
