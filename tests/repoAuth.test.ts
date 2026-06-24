@@ -333,7 +333,17 @@ describe("resolveAllowedRepo", () => {
     );
 
     await expect(resolveAllowedRepo({ repositories: [] }, repoDir)).rejects.toEqual(
-      new ConfigError(`repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' must not set default_remote`),
+      new ConfigError(
+        `repo-local config '${path.join(await fs.realpath(repoDir), ".git-unleash.yaml")}' is invalid: [\n` +
+          '  {\n' +
+          '    "code": "custom",\n' +
+          '    "path": [\n' +
+          '      "default_remote"\n' +
+          "    ],\n" +
+          '    "message": "repo-local config must not set default_remote"\n' +
+          "  }\n" +
+          "]",
+      ),
     );
   });
 
