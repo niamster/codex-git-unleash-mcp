@@ -525,7 +525,7 @@ function compileBranchPatterns(patterns: string[], repoPath: string): RegExp[] {
     validateSafeBranchPattern(resolvedPattern, repoPath);
 
     try {
-      return new RegExp(resolvedPattern);
+      return new RegExp(`^(?:${resolvedPattern})$`);
     } catch (error) {
       throw new ConfigError(
         `invalid branch regex '${resolvedPattern}' for repository '${repoPath}': ${

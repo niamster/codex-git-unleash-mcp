@@ -86,7 +86,7 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.repoLocalConfigPath).toBe(path.join(canonicalRepoDir, ".git-unleash.yaml"));
     expect(resolvedRepo.featureBranchPattern).toBe("codex/<feature-name>");
     expect(resolvedRepo.gitWorktreeBasePath).toBe(path.join(canonicalRepoDir, ".worktrees"));
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^(?:^codex\\/.+$)$"]);
   });
 
   it("allows matching global repo entries to override repo-local policy", async () => {
@@ -266,7 +266,7 @@ describe("resolveAllowedRepo", () => {
     expect(resolvedRepo.allowDraftPrs).toBe(true);
     expect(resolvedRepo.workflowMode).toBe("worktree");
     expect(resolvedRepo.defaultRemote).toBeUndefined();
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^(?:^owner\\/.+$)$"]);
     expect(resolvedRepo.repoOverridesApplied).toBe(false);
   });
 
@@ -295,7 +295,7 @@ describe("resolveAllowedRepo", () => {
 
     expect(resolvedRepo.policySource).toBe("repo_local");
     expect(resolvedRepo.canonicalPath).toBe(canonicalRepoDir);
-    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^owner\\/.+$"]);
+    expect(resolvedRepo.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^(?:^owner\\/.+$)$"]);
     expect(resolvedRepo.featureBranchPattern).toBe("owner/<feature-name>");
     expect(resolvedRepo.repoOverridesApplied).toBe(false);
   });
