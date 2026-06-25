@@ -2,8 +2,6 @@ import { BranchNameNotAllowedError, BranchNotAllowedError, DetachedHeadError } f
 import { getCurrentBranch } from "../exec/git.js";
 import type { RepoPolicy } from "../types/config.js";
 
-const fullMatchCache = new WeakMap<RegExp, RegExp>();
-
 export async function requireAllowedBranch(repo: RepoPolicy): Promise<string> {
   const branch = await getCurrentBranch(repo.worktreePath);
   if (!branch) {
@@ -30,12 +28,8 @@ export function isAllowedBranchName(repo: RepoPolicy, branch: string): boolean {
 }
 
 export function fullMatch(pattern: RegExp, value: string): boolean {
-  let fullPattern = fullMatchCache.get(pattern);
-  if (!fullPattern) {
-    fullPattern = new RegExp(`^(?:${pattern.source})$`, pattern.flags);
-    fullMatchCache.set(pattern, fullPattern);
-  }
-
-  fullPattern.lastIndex = 0;
-  return fullPattern.test(value);
+  // We intentionally clone here instead of mutating RegExp.lastIndex in place.
+  // This adds negligible overhead on our git-tool paths and keeps matching free
+  // of shared mutable regex state even though issue #48 optimized for reuse.
+  return new RegExp(pattern.source, pattern.flags).test(value);
 }

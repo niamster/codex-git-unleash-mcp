@@ -37,7 +37,28 @@ describe("loadConfig", () => {
      expect(config.repositories[0]?.allowDraftPrs).toBe(true);
      expect(config.repositories[0]?.featureBranchPattern).toBeUndefined();
      expect(config.repositories[0]?.workflowMode).toBeUndefined();
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^(?:^feature\\/.+$)$",
+    ]);
+  });
+
+  it("pre-compiles allowed branch patterns as full-match regexes", async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-anchored-pattern-repo-"));
+    const configPath = path.join(os.tmpdir(), `git-mcp-config-${Date.now()}-anchored-pattern.yaml`);
+    tempPaths.push(repoDir, configPath);
+
+    await fs.writeFile(
+      configPath,
+      `repositories:\n  - path: ${repoDir}\n    allowed_branch_patterns:\n      - "feature/[a-z0-9._-]+"\n`,
+      "utf8",
+    );
+
+    const config = await loadConfig(configPath);
+    const [pattern] = config.repositories[0]?.allowedBranchPatterns ?? [];
+
+    expect(pattern?.source).toBe("^(?:feature\\/[a-z0-9._-]+)$");
+    expect(pattern?.test("feature/test-1")).toBe(true);
+    expect(pattern?.test("x/feature/test-1")).toBe(false);
   });
 
   it("inherits top-level defaults", async () => {
@@ -65,7 +86,9 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
     const expectedBasePath = path.join(os.homedir(), "git-worktrees");
 
-     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^user\\/.+$"]);
+     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^(?:^user\\/.+$)$",
+    ]);
      expect(config.repositories[0]?.featureBranchPattern).toBe("user/<feature-name>");
      expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedBasePath);
      expect(config.repositories[0]?.defaultRemote).toBe("upstream");
@@ -119,7 +142,9 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^codex\\/.+$"]);
+    expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^(?:^codex\\/.+$)$",
+    ]);
   });
 
   it("escapes regex metacharacters when resolving <user> in allowed branch patterns", async () => {
@@ -144,7 +169,7 @@ describe("loadConfig", () => {
     const config = await loadConfig(configPath);
     const [pattern] = config.repositories[0]?.allowedBranchPatterns ?? [];
 
-    expect(pattern?.source).toBe("^john\\.doe\\+dev\\/.+$");
+    expect(pattern?.source).toBe("^(?:^john\\.doe\\+dev\\/.+$)$");
     expect(pattern?.test("john.doe+dev/feature")).toBe(true);
     expect(pattern?.test("johnXdoe+dev/feature")).toBe(false);
   });
@@ -290,7 +315,9 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(configPath);
 
-     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual(["^feature\\/.+$"]);
+     expect(config.repositories[0]?.allowedBranchPatterns.map((pattern) => pattern.source)).toEqual([
+      "^(?:^feature\\/.+$)$",
+    ]);
      expect(config.repositories[0]?.featureBranchPattern).toBe("feature/<feature-name>");
      expect(config.repositories[0]?.gitWorktreeBasePath).toBe(expectedWorktreeBasePath);
      expect(config.repositories[0]?.defaultRemote).toBe("origin");
