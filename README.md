@@ -32,6 +32,10 @@ Current tool surface:
 
 The server is intentionally not a generic `git` or `gh` proxy. Inputs are structured, commands are fixed, and unsupported operations are denied by default.
 
+## License
+
+MIT. See [LICENSE](./LICENSE).
+
 ## Prerequisites
 
 - Node.js
