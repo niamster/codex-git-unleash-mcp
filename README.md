@@ -161,7 +161,8 @@ Repo-local policy rules:
 - global config still works as a fallback when a repository does not define `.git-unleash.yaml`
 - for repo-local policy, `git_worktree_base_path` may be relative to the repository root
 - repo-local policy must not set `default_remote`
-- runtime tools fetch the trusted base branch of the current repository instance, compare the repo-local policy in base, index, and working tree, and fail closed on any divergence
+- runtime tools compare the repo-local policy in the local remote-tracking base ref, index, and working tree, and fail closed on any divergence
+- when the trusted base copy is missing locally, runtime tools fetch that base branch and retry the trust check before failing closed
 - in a fork, the fork's own base branch is authoritative for repo-local policy
 - this prevents locally widened repo-local policy from being used for MCP operations
 
