@@ -137,6 +137,45 @@ describe("createServer", () => {
     );
   });
 
+  it("rejects empty required string inputs at the schema boundary", () => {
+    const server = createServer("/tmp/config.yaml") as unknown as {
+      _registeredTools: Record<string, { inputSchema: { safeParse: (input: unknown) => { success: boolean } } }>;
+    };
+
+    expect(
+      server._registeredTools.git_commit!.inputSchema.safeParse({
+        repo_path: "/tmp/repo",
+        message: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      server._registeredTools.git_branch_create_and_switch!.inputSchema.safeParse({
+        repo_path: "/tmp/repo",
+        new_branch: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      server._registeredTools.git_branch_switch!.inputSchema.safeParse({
+        repo_path: "/tmp/repo",
+        branch: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      server._registeredTools.git_worktree_add!.inputSchema.safeParse({
+        repo_path: "/tmp/repo",
+        path: "/tmp/worktree",
+        new_branch: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      server._registeredTools.gh_pr_create_draft!.inputSchema.safeParse({
+        repo_path: "/tmp/repo",
+        title: "",
+        body: "",
+      }).success,
+    ).toBe(false);
+  });
+
   it("omits restartRequired from config tool responses", async () => {
     const configPath = path.join(os.tmpdir(), `git-mcp-config-tools-${Date.now()}.yaml`);
     const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "git-mcp-config-tools-repo-"));

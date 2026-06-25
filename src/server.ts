@@ -196,7 +196,7 @@ export function createServer(configPath: string): McpServer {
     "Create a normal commit in an authorized repository. This tool mutates repository state, requires the current branch to match configured full-match patterns, rejects empty commit messages, and rejects empty commits.",
     {
       repo_path: z.string().min(1),
-      message: z.string(),
+      message: z.string().min(1),
     },
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
     async ({ repo_path, message }) => {
@@ -219,7 +219,7 @@ export function createServer(configPath: string): McpServer {
     "Create a new local branch from an explicit or detected upstream base branch for an authorized repository, then switch to it. This tool requires a clean worktree, requires feature_branch in the effective allowed workflow modes, resolves the remote at runtime, fetches the chosen base branch first, and does not accept arbitrary source refs or detached targets.",
     {
       repo_path: z.string().min(1),
-      new_branch: z.string(),
+      new_branch: z.string().min(1),
       branch: z.string().min(1).optional(),
     },
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
@@ -245,7 +245,7 @@ export function createServer(configPath: string): McpServer {
     "Switch to an existing local branch in an authorized repository. This tool mutates repository state, requires the worktree to be clean, requires the target branch name to match configured allowed patterns, requires feature_branch in the effective allowed workflow modes, only accepts an explicit local branch name, and does not create branches or allow detached checkouts.",
     {
       repo_path: z.string().min(1),
-      branch: z.string(),
+      branch: z.string().min(1),
     },
     CLOSED_WORLD_POTENTIALLY_DESTRUCTIVE_MUTATION_TOOL,
     async ({ repo_path, branch }) => {
@@ -336,7 +336,7 @@ export function createServer(configPath: string): McpServer {
     {
       repo_path: z.string().min(1),
       path: z.string().min(1),
-      new_branch: z.string(),
+      new_branch: z.string().min(1),
       branch: z.string().min(1).optional(),
     },
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
@@ -384,8 +384,8 @@ export function createServer(configPath: string): McpServer {
     "Create a draft pull request for the current branch in an authorized repository. This tool mutates repository state via GitHub, requires the current branch to match configured full-match patterns, is draft-only, requires a non-empty title, and uses either an explicit base or a runtime-detected default branch.",
     {
       repo_path: z.string().min(1),
-      title: z.string(),
-      body: z.string(),
+      title: z.string().min(1),
+      body: z.string().min(1),
       base: z.string().min(1).optional(),
     },
     CLOSED_WORLD_ADDITIVE_MUTATION_TOOL,
