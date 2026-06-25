@@ -28,6 +28,8 @@ export function isAllowedBranchName(repo: RepoPolicy, branch: string): boolean {
 }
 
 export function fullMatch(pattern: RegExp, value: string): boolean {
-  pattern.lastIndex = 0;
-  return pattern.test(value);
+  // We intentionally clone here instead of mutating RegExp.lastIndex in place.
+  // This adds negligible overhead on our git-tool paths and keeps matching free
+  // of shared mutable regex state even though issue #48 optimized for reuse.
+  return new RegExp(pattern.source, pattern.flags).test(value);
 }
