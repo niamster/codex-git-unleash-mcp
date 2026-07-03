@@ -315,7 +315,7 @@ SSH_AUTH_SOCK="/Users/<user>/Library/Group Containers/2BUA8C4S2C.com.1password/t
 git config --get user.signingkey
 ```
 
-The public key shown by `ssh-add -L` must match the public key configured by `user.signingkey`. The comments may differ, but the key type and key body must match.
+`user.signingkey` may be either a `.pub` file path or Git's inline `key::ssh-ed25519 ...` format. In both cases, the public key shown by `ssh-add -L` must match the public key configured by `user.signingkey`. The comments may differ, but the key type and key body must match.
 
 If you use Apple's built-in SSH agent and Keychain integration, keep in mind that this SSH config:
 
