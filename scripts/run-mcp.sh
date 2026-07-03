@@ -49,6 +49,35 @@ ensure_ssh_auth_sock() {
   return 1
 }
 
+is_inline_ssh_signing_key() {
+  [[ "$1" == key::* ]]
+}
+
+normalize_ssh_public_key() {
+  local key_material="$1"
+  key_material="${key_material#key::}"
+  printf '%s\n' "${key_material}" | awk '{ print $1 " " $2 }'
+}
+
+ensure_inline_signing_key_is_loaded() {
+  local signing_key="$1"
+  local normalized_key
+  normalized_key="$(normalize_ssh_public_key "${signing_key}")"
+
+  while IFS= read -r agent_key; do
+    if [[ "$(normalize_ssh_public_key "${agent_key}")" == "${normalized_key}" ]]; then
+      return 0
+    fi
+  done < <(ssh-add -L)
+
+  cat >&2 <<EOF
+Git user.signingkey is configured with inline SSH key data, but ssh-agent does not expose the same public key.
+
+Load the matching signing key into ssh-agent before using git_commit through MCP.
+EOF
+  exit 1
+}
+
 if signing_key="$(resolve_signing_key)"; then
   if ! ensure_ssh_auth_sock; then
     cat >&2 <<EOF
@@ -72,7 +101,9 @@ EOF
     exit 1
   fi
 
-  if [[ ! -f "${signing_key}" ]]; then
+  if is_inline_ssh_signing_key "${signing_key}"; then
+    ensure_inline_signing_key_is_loaded "${signing_key}"
+  elif [[ ! -f "${signing_key}" ]]; then
     cat >&2 <<EOF
 Git user.signingkey points to '${signing_key}', but that file does not exist.
 
